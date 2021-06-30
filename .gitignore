@@ -1,3 +1,5 @@
 model_files/
 data/
 submit/
+__pycache__/
+**/__pycache__/
