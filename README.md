@@ -39,12 +39,12 @@ cd xinye_competition
 python tools/prepare_data.py --regressor-data --detector-data
 ```
 
-##Train regressor
+## Train regressor
 ```shell
 python tools/train_regressor.py
 ```
 
-##Train detector
+## Train detector
 ```shell
 python tools/train_detector.py
 ```
