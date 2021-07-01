@@ -9,69 +9,6 @@ import timm
 import torch.nn.functional as F
 
 
-def image2embedding(img, net):
-    """将img转为embedding"""
-    img = cv2.resize(img, (96, 112))
-    # img = img.resize((96, 112))
-    # img = np.array(img)
-    if len(img.shape) == 2:
-        img = np.stack([img] * 3, 2)
-    imglist = [img, img[:, ::-1, :]]
-
-    for i in range(len(imglist)):
-        imglist[i] = (imglist[i] - 127.5) / 128.0
-        imglist[i] = imglist[i].transpose(2, 0, 1)
-
-    imgs = [torch.from_numpy(i).float().cuda() for i in imglist]
-
-    res = [net(d.unsqueeze(0)).data.cpu().numpy() for d in imgs]
-    features = np.concatenate((res[0], res[1]), 1)
-
-    # imgs = torch.stack(imgs, dim=0)
-    # res = net(imgs)
-    # features = res.view(-1, 256).data.cpu().numpy()
-
-
-    return features
-
-
-def matching(img, mat_path, net, thres=0.622705):
-    """
-    :param img: 输入图片,PIL.Image打开
-    :param mat_path: 数据库特征向量matrix
-    :param gpu: 是否使用gpu
-    :param resume: arcface模型地址
-    :param thres: 阈值
-    :return: 返回数据库中类别和匹配得分
-    """
-    feature = image2embedding(img, net)
-    mat = scipy.io.loadmat(mat_path)['feature'] # (N, 256)
-
-    category = scipy.io.loadmat(mat_path)['class'][0]
-
-    mean = np.mean(np.concatenate((feature, mat), 0))  # number
-    mean = np.expand_dims(mean, 0)   # (1, )
-
-    feature = feature - mean
-    mat = mat - mean
-
-    feature = feature / np.expand_dims(np.sqrt(np.sum(np.power(feature, 2), 1)), 1)  # (1, 256)
-    mat = mat / np.expand_dims(np.sqrt(np.sum(np.power(mat, 2), 1)), 1)  # (N, 256)
-
-    scores = np.sum(np.multiply(feature, mat), 1)   # (N, )
-    # scores = np.sum(mat@feature.T, 1)   # (N, )
-
-    best_score = np.max(scores)
-    index = np.squeeze(scores == best_score)
-    result_category = category[index][0]
-
-    # if best_score < thres:
-    #     return 'Not Defined', '{:.2f}'.format(best_score)
-    # else:
-    #     return result_category, '{:.2f}'.format(best_score)
-    return result_category, best_score.round(5)
-
-
 def imgflip(imgs):
     """
     Args:
@@ -87,10 +24,13 @@ def imgflip(imgs):
     return imgs
 
 def multi_image2embedding(imgs, net, batch_size=None):
-    """
+    """Inference for a end-to-end pipeline.
+
     Args:
-        img (List[np.array] | np.ndarray | torch.Tensor): Resized(96, 112) input images.
+        img (List[np.array] | np.ndarray | torch.Tensor): Resized input images,
+            without normalization and permute.
         net (Model): The regression model.
+        batch_size (int): batch size.
     """
     # imgs = imgflip(imgs)  # (2N, C, H, W)
     # bhwc
@@ -139,13 +79,15 @@ def multi_image2embedding(imgs, net, batch_size=None):
 
     return features
 
-def multi_matching(img, database, category, net, batch_size=20, thres=0.622705):
-    """
+def multi_matching(img, database, category, net, batch_size=20):
+    """Match the inference results.
+
     Args:
-        img (List[np.array]): Resized(96, 112) input images.
-        database (mat file): The databese.
-        category (mat file): The category.
+        img (List[np.array]): Resized input images.
+        database (torch.Tensor): The databese.
+        category (torch.Tensor): The category.
         net (Model): The regression model.
+        batch_size (int): batch size.
     """
     features= multi_image2embedding(img, net, batch_size)  # (N, 256)
 
@@ -166,6 +108,41 @@ def multi_matching(img, database, category, net, batch_size=20, thres=0.622705):
     return result_categories, best_similarity.round(5)
 
 
+def test_inference(imgs, net):
+    """ Inference for eval.
+
+    Args:
+        img (List[np.array] | np.ndarray | torch.Tensor): Resized, normalized input images.
+        net (Model): The regression model.
+    """
+    # imgs = imgflip(imgs)  # (2N, C, H, W)
+    # bhwc
+    if isinstance(imgs, list):
+        imglist = np.stack(imgs, axis=0) if len(imgs) > 1 else imgs[0][None, ...]
+        imgs = torch.from_numpy(imglist)
+    elif isinstance(imgs, np.ndarray):
+        imgs = torch.from_numpy(imgs)
+    elif isinstance(imgs, torch.Tensor):
+        imgs = imgs
+    else:
+        raise TypeError("The type of imgs should be list, np.ndarray or torch.Tensor," 
+                        f"but got {type(imgs)}")
+    if imgs.ndim == 3:
+        imgs = imgs[None, ...]
+
+    imgs = imgs.cuda().float()
+    # imgs = (imgs - 127.5) / 128.
+    # imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
+    imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
+
+    res = net(imgs)  # (2N, 128)
+    res = torch.split(res, res.shape[0] // 2, dim=0) # ((N, 128), (N, 128))
+    res = torch.stack(res, dim=0)  # (2, N, 128)
+    res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
+    res = res.view(-1, 512)  # (N, 256)
+    features = res.data.cpu()#.numpy()
+
+    return features
 
 if __name__ == '__main__':
     img_paths = glob.glob('/d/competition/retail/Preliminaries/train/search_images/b/86,weiweidounai/*')

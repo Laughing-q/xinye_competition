@@ -1,13 +1,13 @@
 import os.path as osp
 import sys
-BASE_DIR = osp.abspath('.')
+BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
 
 from utils.regressor.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
-            TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL
+            TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
-from utils.regressor.distance_calculation_arcface import multi_image2embedding
+from utils.regressor.distance_calculation_arcface import test_inference
 from model.arcface import ArcMarginProduct
 
 from torch import nn
@@ -62,7 +62,7 @@ net = timm.create_model('mobilenetv3_large_100', pretrained=True, num_classes=25
 # img_size = net.get_image_size(model_name)
 img_size = 112
 
-trainset = RetailTrain(root=TRAIN_DIR, img_size=img_size)
+trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
                                           shuffle=True, num_workers=0, drop_last=True)
 ArcMargin = ArcMarginProduct(in_features=256, out_features=trainset.class_nums)
@@ -138,7 +138,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH+1):
         for data in tqdm(testloader):
             for i in range(len(data)):
                 data[i] = data[i].cuda()
-            features = [multi_image2embedding(d, net).numpy() for d in data]
+            features = [test_inference(d, net).numpy() for d in data]
             featureLs.append(features[0])
             featureRs.append(features[1])
         featureLs = np.concatenate(featureLs, axis=0)
@@ -148,7 +148,6 @@ for epoch in range(start_epoch, TOTAL_EPOCH+1):
         # save tmp_result
         # scipy.io.savemat('./result/tmp_result.mat', result)
         accs, thresholds = evaluation_num_fold(result, num=TOTAL_PAIR / INTERVAL)
-        print(accs)
         _print('    ave: {:.4f}'.format(np.mean(accs) * 100))
         _print('    best_threshold: {:.4f}'.format(np.mean(thresholds) * 100))
 

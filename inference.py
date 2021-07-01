@@ -2,9 +2,9 @@ import os.path as osp
 BASE_DIR = osp.abspath(osp.dirname(__file__))
 import sys
 sys.path.insert(0, BASE_DIR)
-from utils.detector import Yolov5
+from model.detector import Yolov5
 from utils.general import xyxy2xywh
-from utils.regressor.distance_calculation_arcface import matching, multi_matching
+from utils.regressor.distance_calculation_arcface import multi_matching
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
 import torch

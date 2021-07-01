@@ -244,9 +244,9 @@ class RetailTest(object):
 
         # imglist = [imgl, imgl[:, ::-1, :], imgr, imgr[:, ::-1, :]]  # 分别将l和r图片分别横向翻转，然后组成个四个元素的list
         imglist = [imgl, imgr]  # 分别将l和r图片分别横向翻转，然后组成个四个元素的list
-        # for i in range(len(imglist)):
-        #     imglist[i] = (imglist[i] - 127.5) / 128.0
-            # imglist[i] = imglist[i].transpose(2, 0, 1)
+        for i in range(len(imglist)):
+            imglist[i] = (imglist[i] - 127.5) / 128.0
+            imglist[i] = imglist[i].transpose(2, 0, 1)
         # imgs = [torch.from_numpy(i).float() for i in imglist]
         return imglist
 

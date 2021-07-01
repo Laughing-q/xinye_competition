@@ -1,5 +1,10 @@
 model_files/
-data/
+data/*
 submit/
 __pycache__/
 **/__pycache__/
+
+!data/retail.yaml
+!data/hyp.scratch.yaml
+
+
