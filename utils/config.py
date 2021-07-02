@@ -1,6 +1,6 @@
 import os.path as osp
 import os
-BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir, osp.pardir))
+BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 # BASE_DIR = osp.abspath('.')
 
 """Training and testing configs"""

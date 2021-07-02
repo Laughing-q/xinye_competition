@@ -36,7 +36,7 @@ cd xinye_competition
 
 ## Prepare data
 ```shell
-python tools/prepare_data.py --regressor-data --detector-data
+python tools/prepare_data.py --regressor-data --detector-data --generate-pair
 ```
 
 ##Train regressor

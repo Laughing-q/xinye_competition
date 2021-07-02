@@ -53,7 +53,6 @@ def getAccuracy(scores, flags, threshold):
 
 
 def getThreshold(scores, flags, thrNum):
-    """获得最佳阈值"""
     accuracys = np.zeros((2 * thrNum + 1, 1))  # [0, 0, 0 ... 0, 0, 0]
     thresholds = np.arange(-thrNum, thrNum + 1) * 1.0 / thrNum  # [-1.    -0.999 -0.998 ...  0.998  0.999  1.   ]
     for i in range(2 * thrNum + 1):
@@ -65,12 +64,10 @@ def getThreshold(scores, flags, thrNum):
 
 
 def evaluation_num_fold(result, num=20):
-    """将测试集分成了10个组，分别对十个组进行evaluation"""
     num = math.ceil(num)
     ACCs = np.zeros(num)
     Thres = np.zeros(num)
-    # result = scipy.io.loadmat(root)  # 加载.mat文件
-    for i in tqdm(range(num)):  # 10个组
+    for i in tqdm(range(num)):  # num个组
         fold = result['fold']
         flags = result['flag']
         featureLs = result['fl']

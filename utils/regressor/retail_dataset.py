@@ -106,6 +106,7 @@ def parseList(pair_path):
     with open(pair_path, 'r') as f:
         pairs = [p.strip() for p in f.readlines()]
 
+    random.shuffle(pairs)
     nameLs = []
     nameRs = []
     folds = []
@@ -255,20 +256,4 @@ class RetailTest(object):
 
 
 if __name__ == "__main__":
-    simiIndex = np.array(random.choices(range(1150), k=50000))
-    simiIndex2 = np.array(random.choices(range(1150), k=50000))
-    print((simiIndex == simiIndex2).sum())
-    index2 = list(itertools.combinations(range(115), 2))
-    print(len(index2))
-
-    # index = list(itertools.combinations(range(5), 2))
-    # print(index)
-    exit()
-    test_dataset = RetailDataset('/d/competition/retail/Preliminaries/test/b_images',
-                                 '/d/competition/retail/Preliminaries/test/b_annotations.json')
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=8, drop_last=False)
-
-    for data in test_loader:
-        print(data[0][0].shape)
-        print(data[0][1].shape)
-        print(data[1].shape)
+    parseList('data/pair.txt')

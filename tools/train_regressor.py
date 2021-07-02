@@ -3,7 +3,7 @@ import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
 
-from utils.regressor.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
+from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
             TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
@@ -64,7 +64,7 @@ img_size = 112
 
 trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
-                                          shuffle=True, num_workers=0, drop_last=True)
+                                          shuffle=True, num_workers=8, drop_last=True)
 ArcMargin = ArcMarginProduct(in_features=256, out_features=trainset.class_nums)
 
 # nl: left_image_path
@@ -72,7 +72,7 @@ ArcMargin = ArcMarginProduct(in_features=256, out_features=trainset.class_nums)
 nl, nr, flags, folds = parseList(pair_path=PAIR_PATH)
 testdataset = RetailTest(nl, nr, img_size=img_size)
 testloader = torch.utils.data.DataLoader(testdataset, batch_size=BATCH_SIZE,
-                                         shuffle=False, num_workers=0, drop_last=False)
+                                         shuffle=False, num_workers=8, drop_last=False)
 
 
 if RESUME:
