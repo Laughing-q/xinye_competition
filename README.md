@@ -27,9 +27,8 @@ xinye_competition
 
 Supported methods:
 
-- [] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
-- [] [CoAtNet](https://arxiv.org/pdf/2106.04803v1.pdf)
-
+- [  ] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
+- [  ] [CoAtNet](https://arxiv.org/pdf/2106.04803v1.pdf)
 
 train and test folders are original data.
 
