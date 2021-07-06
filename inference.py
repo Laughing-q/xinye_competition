@@ -25,7 +25,7 @@ DETECT_THRES = 0.3
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (112, 112)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 20
+REGRESS_BATCH_SIZE = 32
 COLORS = [[random.randint(0, 255) for _ in range(3)]
                for _ in range(116)]
 
@@ -117,9 +117,9 @@ def run():
                                       'score': round(float(detect_confs[i] * scores[i]), 5)})
                     label = '%s' % (int(categories[i]))
                     label = f'{int(categories[i])} {float(detect_confs[i] * scores[i]):.2f}'
-                    plot_one_box(det_boxes[i], img_raw, label=label,
-                                 color=COLORS[int(categories[i])], 
-                                 line_thickness=2)
+                    # plot_one_box(det_boxes[i], img_raw, label=label,
+                    #              color=COLORS[int(categories[i])], 
+                    #              line_thickness=2)
         # cv2.imwrite(osp.join(PIC_SAVE_PATH, file_name), img_raw)
     test_json['annotations'] = annotation
     with open(RESULT_SAVE_PATH, 'w') as fw:
