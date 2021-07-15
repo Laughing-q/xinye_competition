@@ -17,6 +17,14 @@ import argparse
 import timm
 import math
 
+parser = argparse.ArgumentParser(description='Testing')
+parser.add_argument('--dataset_dir', type=str, default='./data/test', help='The path of test data')
+parser.add_argument('--resume', type=str, default='./model/efficientnetb4_99.95_0.592392.ckpt', help='The path pf save model')
+parser.add_argument('--feature_save_dir', type=str, default='./result/efficientnetb4_99.95_0.592392.mat',
+                    help='The path of the extract features save, must be .mat file')
+args = parser.parse_args()
+
+
 def getFeatureFromTorch(net, test_dataset, batch_size=1):
     """获得特征向量"""
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8, drop_last=False)
@@ -45,6 +53,7 @@ def getAccuracy(scores, flags, threshold):
 
 
 def getThreshold(scores, flags, thrNum):
+    """获得最佳阈值"""
     accuracys = np.zeros((2 * thrNum + 1, 1))  # [0, 0, 0 ... 0, 0, 0]
     thresholds = np.arange(-thrNum, thrNum + 1) * 1.0 / thrNum  # [-1.    -0.999 -0.998 ...  0.998  0.999  1.   ]
     for i in range(2 * thrNum + 1):
@@ -56,10 +65,12 @@ def getThreshold(scores, flags, thrNum):
 
 
 def evaluation_num_fold(result, num=20):
+    """将测试集分成了10个组，分别对十个组进行evaluation"""
     num = math.ceil(num)
     ACCs = np.zeros(num)
     Thres = np.zeros(num)
-    for i in tqdm(range(num)):  # num个组
+    # result = scipy.io.loadmat(root)  # 加载.mat文件
+    for i in tqdm(range(num)):  # 10个组
         fold = result['fold']
         flags = result['flag']
         featureLs = result['fl']
@@ -87,6 +98,7 @@ def evaluation_num_fold(result, num=20):
 
 
 if __name__ == '__main__':
+    # getFeatureFromTorch(resume=args.resume)
     test_dataset = RetailDataset('/d/competition/retail/Preliminaries/test/b_images',
                                  '/d/competition/retail/Preliminaries/test/b_annotations.json')
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=8, drop_last=False)

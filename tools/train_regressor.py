@@ -1,10 +1,7 @@
 import os.path as osp
 import sys
-BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
-sys.path.insert(0, BASE_DIR)
-
-from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
-            TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL
+from utils.regressor.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
+    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
@@ -23,6 +20,13 @@ import timm
 import os
 import logging
 import torch.utils.data
+from model.CircleLoss import SparseCircleLoss
+from model.swin_transformer import SwinTransformer
+from model.CoAtNet import CoAtNet
+
+BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
+sys.path.insert(0, BASE_DIR)
+
 
 def init_log(output_dir):
     logging.basicConfig(level=logging.DEBUG,
@@ -34,6 +38,7 @@ def init_log(output_dir):
     console.setLevel(logging.INFO)
     logging.getLogger('').addHandler(console)
     return logging
+
 
 # gpu init
 gpu_list = ''
@@ -56,7 +61,9 @@ os.makedirs(save_dir, exist_ok=True)
 logging = init_log(save_dir)
 _print = logging.info
 
-net = timm.create_model('mobilenetv3_large_100', pretrained=True, num_classes=256)
+# net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=256)
+# net = SwinTransformer(img_size=112, num_classes=256)
+net = CoAtNet(112, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=256)
 
 # define trainloader and testloader
 # img_size = net.get_image_size(model_name)
@@ -64,40 +71,39 @@ img_size = 112
 
 trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
-                                          shuffle=True, num_workers=8, drop_last=True)
+                                          shuffle=True, num_workers=0, drop_last=True)
 ArcMargin = ArcMarginProduct(in_features=256, out_features=trainset.class_nums)
+SparseCircle = SparseCircleLoss(m=0.25, emdsize=256, class_num=trainset.class_nums, gamma=64, use_cuda=True)
 
 # nl: left_image_path
 # nr: right_image_path
 nl, nr, flags, folds = parseList(pair_path=PAIR_PATH)
 testdataset = RetailTest(nl, nr, img_size=img_size)
 testloader = torch.utils.data.DataLoader(testdataset, batch_size=BATCH_SIZE,
-                                         shuffle=False, num_workers=8, drop_last=False)
-
+                                         shuffle=False, num_workers=0, drop_last=False)
 
 if RESUME:
     ckpt = torch.load(RESUME)
     net.load_state_dict(ckpt['net_state_dict'])
     start_epoch = ckpt['epoch'] + 1
 
-
 # define optimizers
 optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
 
 exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[36, 52, 58], gamma=0.1)
 
-
 net = net.cuda()
 ArcMargin = ArcMargin.cuda()
+SparseCircle = SparseCircle.cuda()
 if multi_gpus:
     net = DataParallel(net)
-    ArcMargin = DataParallel(ArcMargin)
+    # ArcMargin = DataParallel(ArcMargin)
+    SparseCircle = DataParallel(SparseCircle)
 criterion = torch.nn.CrossEntropyLoss()
-
 
 best_acc = 0.0
 best_epoch = 0
-for epoch in range(start_epoch, TOTAL_EPOCH+1):
+for epoch in range(start_epoch, TOTAL_EPOCH + 1):
     exp_lr_scheduler.step()
     # train model
     _print('Train Epoch: {}/{} ...'.format(epoch, TOTAL_EPOCH))
@@ -108,14 +114,18 @@ for epoch in range(start_epoch, TOTAL_EPOCH+1):
     since = time.time()
     trainloader = tqdm(trainloader)
     for i, data in enumerate(trainloader):
+
         img, label = data[0].cuda(), data[1].cuda()
         batch_size = img.size(0)
         optimizer_ft.zero_grad()
 
         raw_logits = net(img)
 
-        output = ArcMargin(raw_logits, label)
-        total_loss = criterion(output, label)
+        # output = ArcMargin(raw_logits, label)
+        total_loss = SparseCircle(raw_logits, label)
+        if len(GPU) != 1:
+            total_loss = torch.mean(total_loss)
+        # total_loss = criterion(output, label)
         total_loss.backward()
         optimizer_ft.step()
 
@@ -125,7 +135,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH+1):
         trainloader.set_description('Training Progress')
     train_total_loss = train_total_loss / total
     time_elapsed = time.time() - since
-    loss_msg = '    total_loss: {:.4f} time: {:.0f}m {:.0f}s'\
+    loss_msg = '    total_loss: {:.4f} time: {:.0f}m {:.0f}s' \
         .format(train_total_loss, time_elapsed // 60, time_elapsed % 60)
     _print(loss_msg)
 

@@ -23,6 +23,7 @@ def imgflip(imgs):
 
     return imgs
 
+
 def multi_image2embedding(imgs, net, batch_size=None):
     """Inference for a end-to-end pipeline.
 
@@ -42,12 +43,12 @@ def multi_image2embedding(imgs, net, batch_size=None):
     elif isinstance(imgs, torch.Tensor):
         imgs = imgs
     else:
-        raise TypeError("The type of imgs should be list, np.ndarray or torch.Tensor," 
+        raise TypeError("The type of imgs should be list, np.ndarray or torch.Tensor,"
                         f"but got {type(imgs)}")
     if imgs.ndim == 3:
         imgs = imgs[None, ...]
 
-    if batch_size is not None:   
+    if batch_size is not None:
         features = []
         for sub_imgs in torch.split(imgs, batch_size, dim=0):
             sub_imgs = sub_imgs.cuda().float()
@@ -56,11 +57,11 @@ def multi_image2embedding(imgs, net, batch_size=None):
             sub_imgs = torch.cat([sub_imgs, sub_imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
 
             res = net(sub_imgs)  # (2N, 128)
-            res = torch.split(res, res.shape[0] // 2, dim=0) # ((N, 128), (N, 128))
+            res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
             res = torch.stack(res, dim=0)  # (2, N, 128)
             res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
             res = res.view(-1, 512)  # (N, 256)
-            sub_features = res.data.cpu()#.numpy()
+            sub_features = res.data.cpu()  # .numpy()
             features.append(sub_features)
 
         features = torch.cat(features, dim=0)
@@ -71,13 +72,14 @@ def multi_image2embedding(imgs, net, batch_size=None):
         imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
 
         res = net(imgs)  # (2N, 128)
-        res = torch.split(res, res.shape[0] // 2, dim=0) # ((N, 128), (N, 128))
+        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
         res = torch.stack(res, dim=0)  # (2, N, 128)
         res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
         res = res.view(-1, 512)  # (N, 256)
-        features = res.data.cpu()#.numpy()
+        features = res.data.cpu()  # .numpy()
 
     return features
+
 
 def multi_matching(img, database, category, net, batch_size=20):
     """Match the inference results.
@@ -89,17 +91,13 @@ def multi_matching(img, database, category, net, batch_size=20):
         net (Model): The regression model.
         batch_size (int): batch size.
     """
-    features= multi_image2embedding(img, net, batch_size)  # (N, 256)
+    features = multi_image2embedding(img, net, batch_size)  # (N, 256)
 
-    # find the similarity
-    features_normalized = F.normalize(features)
-    database_normalized = F.normalize(torch.from_numpy(database))
-    cosine = F.linear(features_normalized, database_normalized)
-    similarity = cosine.permute(1, 0).contiguous().numpy()
+    feature_normalized, mat_normalized = F.normalize(torch.tensor(features)).cpu().numpy(), \
+                                         F.normalize(torch.tensor(database)).cpu().numpy()
+    scores = np.sum(np.multiply(feature_normalized, mat_normalized), 1)
 
-    # features = features / np.expand_dims(np.sqrt(np.sum(np.power(features, 2), 1)), 1)  # (N, 256)
-    # database = database / np.expand_dims(np.sqrt(np.sum(np.power(database, 2), 1)), 1)  # (M, 256)
-    # scores = database@features.T   # (M, N)
+    similarity = np.max(scores)
 
     best_similarity = np.max(similarity, axis=0)  # (N, )
     index = np.argmax(similarity, axis=0)  # (N, )
@@ -125,7 +123,7 @@ def test_inference(imgs, net):
     elif isinstance(imgs, torch.Tensor):
         imgs = imgs
     else:
-        raise TypeError("The type of imgs should be list, np.ndarray or torch.Tensor," 
+        raise TypeError("The type of imgs should be list, np.ndarray or torch.Tensor,"
                         f"but got {type(imgs)}")
     if imgs.ndim == 3:
         imgs = imgs[None, ...]
@@ -136,13 +134,14 @@ def test_inference(imgs, net):
     imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
 
     res = net(imgs)  # (2N, 128)
-    res = torch.split(res, res.shape[0] // 2, dim=0) # ((N, 128), (N, 128))
+    res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
     res = torch.stack(res, dim=0)  # (2, N, 128)
     res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
     res = res.view(-1, 512)  # (N, 256)
-    features = res.data.cpu()#.numpy()
+    features = res.data.cpu()  # .numpy()
 
     return features
+
 
 if __name__ == '__main__':
     img_paths = glob.glob('/d/competition/retail/Preliminaries/train/search_images/b/86,weiweidounai/*')
@@ -158,7 +157,7 @@ if __name__ == '__main__':
     scores = []
 
     # mat = scipy.io.loadmat('matrix_features/resnet_112.mat')   # (M, 256)
-    mat = scipy.io.loadmat('matrix_features/efficient_99.90.mat')   # (M, 256)
+    mat = scipy.io.loadmat('matrix_features/efficient_99.90.mat')  # (M, 256)
     database = mat['feature']
 
     category = mat['class'][0]
@@ -179,9 +178,9 @@ if __name__ == '__main__':
 
         imgs.append(img)
     categories, scores = multi_matching(imgs,
-                               database=database,
-                               category=category,
-                               net=regressor)
+                                        database=database,
+                                        category=category,
+                                        net=regressor)
     print(np.array(categories))
     print(np.array(scores))
     print('total time:', time.time() - ts)

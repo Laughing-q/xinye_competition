@@ -1,6 +1,6 @@
 from torch import nn
 import torch
-from coatnet_utils import MBConvBlock, FFN, RelativeAttention, PatchEmded, DownSample
+from model.coatnet_utils import MBConvBlock, FFN, RelativeAttention, PatchEmded, DownSample
 from timm.models.layers import DropPath
 from torch.nn import init
 # TODO:

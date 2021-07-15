@@ -10,6 +10,7 @@ import glob
 import cv2
 import os
 
+
 def crop_images(pic_root, json_file, save_dir, suffix=''):
     os.makedirs(save_dir, exist_ok=True)
     anno = COCO(json_file)
@@ -105,20 +106,29 @@ def diff_imgs(img_names1, img_names2)   :
 def parseList(pair_path):
     with open(pair_path, 'r') as f:
         pairs = [p.strip() for p in f.readlines()]
-
-    random.shuffle(pairs)
+    folder_name = 'cropped_test'
     nameLs = []
     nameRs = []
     folds = []
     flags = []
     for i, p in enumerate(pairs):
-        nameL, nameR, flag, fold = p.split(' ')
+        p = p.split(' ')
+        if len(p) == 3:  # 同一个人的照片组成对比组
+            nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
+            nameR = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[2])))
+            fold = i // 2400
+            flag = 1  # 正正对比
+        elif len(p) == 4:  # 不同人的照片组成对比组
+            nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
+            nameR = os.path.join(pair_path, folder_name, p[2], '{}.jpg'.format(int(p[3])))
+            fold = i // 2400
+            flag = -1  # 正负对比
         nameLs.append(nameL)
         nameRs.append(nameR)
-        flags.append(int(flag))
-        folds.append(int(fold))
-
-    return [nameLs, nameRs, np.array(flags), np.array(folds)]
+        folds.append(fold)
+        flags.append(flag)
+    # print(nameLs)
+    return [nameLs, nameRs, folds, flags]
 
 
 class RetailDataset(object):
@@ -175,29 +185,28 @@ class RetailDataset(object):
         return len(self.image_list)
 
 
-
 class RetailTrain(object):
     """For training"""
     def __init__(self, root, img_size):
         self.root = root
         self.img_size = img_size
 
-        # img_txt_dir = os.path.join(root, 'train.txt')
-        # image_list = []
-        # label_list = []
-        # with open(img_txt_dir) as f:
-        #     img_label_list = f.read().splitlines()
-        # for info in img_label_list:
-        #     image_dir, label_name = info.split(' ')
-        #     image_list.append(os.path.join(root, 'train', image_dir))
-        #     label_list.append(int(label_name))
-        #
-        # self.image_list = image_list
-        # self.label_list = label_list
-        # self.class_nums = len(np.unique(self.label_list))
-        self.image_list = glob.glob(osp.join(self.root, '*/*'))
-        self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
-        self.class_nums = len(glob.glob(osp.join(self.root, '*')))
+        img_txt_dir = os.path.join(root, 'train.txt')
+        image_list = []
+        label_list = []
+        with open(img_txt_dir) as f:
+            img_label_list = f.read().splitlines()
+        for info in img_label_list:
+            image_dir, label_name = info.split(' ')
+            image_list.append(os.path.join(root, 'train', image_dir))
+            label_list.append(int(label_name))
+
+        self.image_list = image_list
+        self.label_list = label_list
+        self.class_nums = len(np.unique(self.label_list))
+        # self.image_list = glob.glob(osp.join(self.root, '*/*'))
+        # self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
+        # self.class_nums = len(glob.glob(osp.join(self.root, '*')))
 
     def __getitem__(self, index):
         img_path = self.image_list[index]
@@ -256,4 +265,20 @@ class RetailTest(object):
 
 
 if __name__ == "__main__":
-    parseList('data/pair.txt')
+    simiIndex = np.array(random.choices(range(1150), k=50000))
+    simiIndex2 = np.array(random.choices(range(1150), k=50000))
+    print((simiIndex == simiIndex2).sum())
+    index2 = list(itertools.combinations(range(115), 2))
+    print(len(index2))
+
+    # index = list(itertools.combinations(range(5), 2))
+    # print(index)
+    exit()
+    test_dataset = RetailDataset('/d/competition/retail/Preliminaries/test/b_images',
+                                 '/d/competition/retail/Preliminaries/test/b_annotations.json')
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=8, drop_last=False)
+
+    for data in test_loader:
+        print(data[0][0].shape)
+        print(data[0][1].shape)
+        print(data[1].shape)
