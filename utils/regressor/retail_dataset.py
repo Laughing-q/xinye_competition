@@ -1,4 +1,5 @@
 from pycocotools.coco import COCO
+from torchvision import transforms
 from PIL import Image
 import os.path as osp
 import numpy as np
@@ -150,7 +151,7 @@ def parseList(pair_path):
 
 class RetailDataset(object):
     """Generate database"""
-    def __init__(self, pic_root, json_file):
+    def __init__(self, pic_root, json_file, img_size=112):
         self.anno = COCO(json_file)
         # # check dataset
         # for k, v in self.anno.imgToAnns.items():
@@ -167,6 +168,7 @@ class RetailDataset(object):
         self.image_list = []
         self.label_list = []
         self.bboxs = []
+        self.img_size = img_size
         for img_id, annos in self.anno.imgToAnns.items():
             file_name = self.anno.imgs[img_id]['file_name']
             img_path = osp.join(pic_root, file_name)
@@ -182,7 +184,7 @@ class RetailDataset(object):
         target = self.label_list[index]
         x1, y1, w, h = self.bboxs[index]
         img = np.array(Image.open(img_path))[y1:y1+h, x1:x1+w, :]
-        img = cv2.resize(img, (112, 112))
+        img = cv2.resize(img, (self.img_size, self.img_size))
         # cv2.imshow('p', img)
         # cv2.waitKey(0)
 
@@ -224,6 +226,11 @@ class RetailTrain(object):
         self.image_list = glob.glob(osp.join(self.root, '*/*'))
         self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
         self.class_nums = len(glob.glob(osp.join(self.root, '*')))
+        self.transformer = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Resize([int(self.img_size * 1.2) for _ in range(2)]), 
+            transforms.RandomCrop([int(self.img_size) for _ in range(2)]), 
+        ])
 
     def __getitem__(self, index):
         img_path = self.image_list[index]

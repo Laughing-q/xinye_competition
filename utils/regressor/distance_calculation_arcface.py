@@ -23,8 +23,30 @@ def imgflip(imgs):
 
     return imgs
 
+def inference(imgs, net, concat=True):
+    """Inference
 
-def multi_image2embedding(imgs, net, batch_size=None):
+    Args:
+        imgs (torch.Tensor): images after normalization and permute
+        net (torch.Moduel): model
+        concat (bool): Whether to concat features
+    """
+    if concat:
+        imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
+        res = net(imgs)  # (2N, 128)
+        sub_dim = res.shape[-1]
+        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
+        res = torch.stack(res, dim=0)  # (2, N, 128)
+        res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
+        res = res.view(-1, sub_dim * 2)  # (N, 256)
+        features = res.data.cpu()  # .numpy()
+    else:
+        res = net(imgs)  # (N, features_dim)
+        features = res.data.cpu()  # .numpy()
+    return features
+
+
+def multi_image2embedding(imgs, net, batch_size=None, concat=True):
     """Inference for a end-to-end pipeline.
 
     Args:
@@ -54,29 +76,14 @@ def multi_image2embedding(imgs, net, batch_size=None):
             sub_imgs = sub_imgs.cuda().float()
             sub_imgs = (sub_imgs - 127.5) / 128.
             sub_imgs = sub_imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-            sub_imgs = torch.cat([sub_imgs, sub_imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
-
-            res = net(sub_imgs)  # (2N, 128)
-            res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
-            res = torch.stack(res, dim=0)  # (2, N, 128)
-            res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
-            res = res.view(-1, 512)  # (N, 256)
-            sub_features = res.data.cpu()  # .numpy()
+            sub_features = inference(sub_imgs, net, concat=concat)
             features.append(sub_features)
-
         features = torch.cat(features, dim=0)
     else:
         imgs = imgs.cuda().float()
         imgs = (imgs - 127.5) / 128.
         imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-        imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
-
-        res = net(imgs)  # (2N, 128)
-        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
-        res = torch.stack(res, dim=0)  # (2, N, 128)
-        res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
-        res = res.view(-1, 512)  # (N, 256)
-        features = res.data.cpu()  # .numpy()
+        features = inference(imgs, net, concat=concat)
 
     return features
 
@@ -111,7 +118,7 @@ def multi_matching(img, database, category, net, batch_size=20):
     return result_categories, best_similarity.round(5)
 
 
-def test_inference(imgs, net):
+def test_inference(imgs, net, concat=True):
     """ Inference for eval.
 
     Args:
@@ -136,14 +143,7 @@ def test_inference(imgs, net):
     imgs = imgs.cuda().float()
     # imgs = (imgs - 127.5) / 128.
     # imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-    imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
-
-    res = net(imgs)  # (2N, 128)
-    res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
-    res = torch.stack(res, dim=0)  # (2, N, 128)
-    res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
-    res = res.view(-1, 512)  # (N, 256)
-    features = res.data.cpu()  # .numpy()
+    features = inference(imgs, net, concat=concat)
 
     return features
 

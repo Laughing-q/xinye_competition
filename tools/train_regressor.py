@@ -63,7 +63,7 @@ logging = init_log(save_dir)
 _print = logging.info
 
 net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=256)
-net = CGDModel(net, gd_config='SG', feature_dim=256, num_classes=256)
+# net = CGDModel(net, gd_config='SG', feature_dim=256, num_classes=256)
 # net = SwinTransformer(img_size=112, num_classes=256)
 # net = CoAtNet(112, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=256)
 
@@ -124,10 +124,10 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
         raw_logits = net(img)
 
         # output = ArcMargin(raw_logits, label)
+        # total_loss = criterion(output, label)
         total_loss = SparseCircle(raw_logits, label)
         if len(GPU) != 1:
             total_loss = torch.mean(total_loss)
-        # total_loss = criterion(output, label)
         total_loss.backward()
         optimizer_ft.step()
 
@@ -161,7 +161,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
         # scipy.io.savemat('./result/tmp_result.mat', result)
         accs, thresholds = evaluation_num_fold(result, num=TOTAL_PAIR / INTERVAL)
         _print('    ave: {:.4f}'.format(np.mean(accs) * 100))
-        _print('    best_threshold: {:.4f}'.format(np.mean(thresholds) * 100))
+        _print('    best_threshold: {:.4f}'.format(np.mean(thresholds)))
 
     # save model
     if epoch % SAVE_FREQ == 0:

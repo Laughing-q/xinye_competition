@@ -4,7 +4,7 @@ BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 # BASE_DIR = osp.abspath('.')
 
 """Training and testing configs"""
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 SAVE_FREQ = 1
 TEST_FREQ = 1
 TOTAL_EPOCH = 300
