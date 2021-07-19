@@ -23,8 +23,8 @@ def imgflip(imgs):
 
     return imgs
 
-def inference(imgs, net, concat=True):
-    """Inference
+def get_features(imgs, net, concat=True):
+    """Two style of inference
 
     Args:
         imgs (torch.Tensor): images after normalization and permute
@@ -76,19 +76,19 @@ def multi_image2embedding(imgs, net, batch_size=None, concat=True):
             sub_imgs = sub_imgs.cuda().float()
             sub_imgs = (sub_imgs - 127.5) / 128.
             sub_imgs = sub_imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-            sub_features = inference(sub_imgs, net, concat=concat)
+            sub_features = get_features(sub_imgs, net, concat=concat)
             features.append(sub_features)
         features = torch.cat(features, dim=0)
     else:
         imgs = imgs.cuda().float()
         imgs = (imgs - 127.5) / 128.
         imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-        features = inference(imgs, net, concat=concat)
+        features = get_features(imgs, net, concat=concat)
 
     return features
 
 
-def multi_matching(img, database, category, net, batch_size=20):
+def multi_matching(img, database, category, net, batch_size=20, concat=True):
     """Match the inference results.
 
     Args:
@@ -98,7 +98,7 @@ def multi_matching(img, database, category, net, batch_size=20):
         net (Model): The regression model.
         batch_size (int): batch size.
     """
-    features = multi_image2embedding(img, net, batch_size)  # (N, 256)
+    features = multi_image2embedding(img, net, batch_size, concat=concat)  # (N, 256)
 
     features_normalized = F.normalize(features)
     database_normalized = F.normalize(database)
@@ -143,7 +143,7 @@ def test_inference(imgs, net, concat=True):
     imgs = imgs.cuda().float()
     # imgs = (imgs - 127.5) / 128.
     # imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-    features = inference(imgs, net, concat=concat)
+    features = get_features(imgs, net, concat=concat)
 
     return features
 

@@ -9,6 +9,10 @@ SAVE_FREQ = 1
 TEST_FREQ = 1
 TOTAL_EPOCH = 300
 
+INPUT_SIZE = 112
+FEATURE_DIMS = 256
+CONCAT = True  # Whether to concat the prediction results
+
 RESUME = 0
 SAVE_DIR = './arcface_runs'
 MODEL_PRE = 'Retail_'
@@ -36,6 +40,14 @@ PAIR_PATH = osp.join(BASE_DIR, 'data/pair.txt')
 SIM_RATIO = 0.5  
 TOTAL_PAIR = 10000
 INTERVAL = 500
+
+# augmentation
+AUGMENT_PROBABILITY = {
+    'RandomResizedCrop': 0.5,
+    'HorizontalFlip': 0.5,
+    'VerticalFlip': 0.5,
+    'RandomBrightnessContrast': 0.5,
+}
 
 
 """detector"""

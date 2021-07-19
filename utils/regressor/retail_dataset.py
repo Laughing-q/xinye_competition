@@ -1,5 +1,6 @@
 from pycocotools.coco import COCO
 from torchvision import transforms
+import albumentations as A
 from PIL import Image
 import os.path as osp
 import numpy as np
@@ -206,45 +207,42 @@ class RetailDataset(object):
 
 class RetailTrain(object):
     """For training"""
-    def __init__(self, root, img_size):
+    def __init__(self, root, img_size, **kwargs):
         self.root = root
         self.img_size = img_size
 
-        # img_txt_dir = os.path.join(root, 'train.txt')
-        # image_list = []
-        # label_list = []
-        # with open(img_txt_dir) as f:
-        #     img_label_list = f.read().splitlines()
-        # for info in img_label_list:
-        #     image_dir, label_name = info.split(' ')
-        #     image_list.append(os.path.join(root, 'train', image_dir))
-        #     label_list.append(int(label_name))
-        #
-        # self.image_list = image_list
-        # self.label_list = label_list
-        # self.class_nums = len(np.unique(self.label_list))
         self.image_list = glob.glob(osp.join(self.root, '*/*'))
         self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
         self.class_nums = len(glob.glob(osp.join(self.root, '*')))
-        self.transformer = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Resize([int(self.img_size * 1.2) for _ in range(2)]), 
-            transforms.RandomCrop([int(self.img_size) for _ in range(2)]), 
-        ])
+        # torchvision style
+        # self.transformer = transforms.Compose([
+        #     transforms.ToTensor(),
+        #     transforms.Resize([int(self.img_size * 1.2) for _ in range(2)]), 
+        #     transforms.RandomCrop([int(self.img_size) for _ in range(2)]), 
+        # ])
+        # albumentations style
+        self.transform = A.Compose([
+            A.RandomResizedCrop(width=self.img_size, height=self.img_size, 
+                                scale=(0.85, 1), ratio=(1, 1), p=kwargs['RandomResizedCrop']), 
+            A.HorizontalFlip(p=kwargs['HorizontalFlip']),
+            A.VerticalFlip(p=kwargs['VerticalFlip']), 
+            A.RandomBrightnessContrast(p=kwargs['RandomBrightnessContrast']),])
 
     def __getitem__(self, index):
         img_path = self.image_list[index]
         target = self.label_list[index]
         img = Image.open(img_path)
-        img = img.resize((self.img_size, self.img_size))
+        # img = img.resize((self.img_size, self.img_size))
         img = np.array(img)
+        img = self.transform(image=img)["image"]
 
-        if len(img.shape) == 2:
-            img = np.stack([img] * 3, 2)
-        flip = np.random.choice(2)*2-1  # 1和-1随机
-        img = img[:, ::flip, :]  # 随机横向翻转
+        # if len(img.shape) == 2:
+        #     img = np.stack([img] * 3, 2)
+        # flip = np.random.choice(2)*2-1  # 1和-1随机
+        # img = img[:, ::flip, :]  # 随机横向翻转
         img = (img - 127.5) / 128.0
         img = img.transpose(2, 0, 1)
+        img = np.ascontiguousarray(img)
         img = torch.from_numpy(img).float()
 
         return img, target
@@ -281,6 +279,7 @@ class RetailTest(object):
         for i in range(len(imglist)):
             imglist[i] = (imglist[i] - 127.5) / 128.0
             imglist[i] = imglist[i].transpose(2, 0, 1)
+            imglist[i] = np.ascontiguousarray(imglist[i])
         # imgs = [torch.from_numpy(i).float() for i in imglist]
         return imglist
 
@@ -289,20 +288,43 @@ class RetailTest(object):
 
 
 if __name__ == "__main__":
-    simiIndex = np.array(random.choices(range(1150), k=50000))
-    simiIndex2 = np.array(random.choices(range(1150), k=50000))
-    print((simiIndex == simiIndex2).sum())
-    index2 = list(itertools.combinations(range(115), 2))
-    print(len(index2))
+    # albumentations test
+    img_size = 500
+    transform = A.Compose([
+        # A.Resize(width=int(img_size * 1.2), height=int(img_size * 1.2)), 
+        # A.RandomCrop(width=img_size, height=img_size),
+        A.RandomResizedCrop(width=img_size, height=img_size, scale=(0.85, 1), ratio=(1, 1), p=0.5), 
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5), 
+        A.RandomBrightnessContrast(p=0.5),
+        A.ColorJitter(p=0)])
 
-    # index = list(itertools.combinations(range(5), 2))
-    # print(index)
-    exit()
-    test_dataset = RetailDataset('/d/competition/retail/Preliminaries/test/b_images',
-                                 '/d/competition/retail/Preliminaries/test/b_annotations.json')
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=8, drop_last=False)
+    # Read an image with OpenCV and convert it to the RGB colorspace
+    image = Image.open('/home/laughing/Downloads/jensen.jpg')
+    image = np.array(image)
+    # image = cv2.imread("/home/laughing/Downloads/jensen.jpg")
+    # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    for data in test_loader:
-        print(data[0][0].shape)
-        print(data[0][1].shape)
-        print(data[1].shape)
+    # Augment an image
+    transformed = transform(image=image)
+    transformed_image = transformed["image"]
+    cv2.imshow('ori', cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    cv2.imshow('p', cv2.cvtColor(transformed_image, cv2.COLOR_RGB2BGR))
+    cv2.waitKey(0)
+    # simiIndex = np.array(random.choices(range(1150), k=50000))
+    # simiIndex2 = np.array(random.choices(range(1150), k=50000))
+    # print((simiIndex == simiIndex2).sum())
+    # index2 = list(itertools.combinations(range(115), 2))
+    # print(len(index2))
+    #
+    # # index = list(itertools.combinations(range(5), 2))
+    # # print(index)
+    # exit()
+    # test_dataset = RetailDataset('/d/competition/retail/Preliminaries/test/b_images',
+    #                              '/d/competition/retail/Preliminaries/test/b_annotations.json')
+    # test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=8, drop_last=False)
+    #
+    # for data in test_loader:
+    #     print(data[0][0].shape)
+    #     print(data[0][1].shape)
+    #     print(data[1].shape)

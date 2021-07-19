@@ -8,6 +8,7 @@ from utils.general import xyxy2xywh
 from utils.regressor.distance_calculation_arcface import multi_matching
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
+from utils.config import CONCAT, INPUT_SIZE
 import torch
 import cv2
 import random
@@ -24,7 +25,7 @@ random.seed(0)
 REGRESS_THRES = 0.276
 DETECT_THRES = 0.001
 IOU_THRES = 0.4
-REGRESS_INPUT_SIZE = (112, 112)  # (w, h)
+REGRESS_INPUT_SIZE = (INPUT_SIZE, INPUT_SIZE)  # (w, h)
 DETECT_MODE = 'x'
 REGRESS_BATCH_SIZE = 32
 COLORS = [[random.randint(0, 255) for _ in range(3)]
@@ -67,9 +68,10 @@ def run():
 
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH, 
-                                            json_file=RETRIEVAL_JSON_PATH)
+                                            json_file=RETRIEVAL_JSON_PATH, 
+                                             img_size=INPUT_SIZE)
 
-    mat = retail_eval.getFeatureFromTorch(regressor, test_dataset, batch_size=REGRESS_BATCH_SIZE)
+    mat = retail_eval.getFeatureFromTorch(regressor, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
     database = mat['feature']
     category_base = mat['class']
 
@@ -110,8 +112,8 @@ def run():
                                                 database=database, 
                                                 category=category_base, 
                                                 net=regressor, 
-                                                batch_size=REGRESS_BATCH_SIZE)
-                                                # batch_size=None)
+                                                batch_size=REGRESS_BATCH_SIZE,
+                                                concat=CONCAT)
             detect_confs = det[:, 4]
             det_boxes = det[:, :4]
             boxes = xyxy2xywh(det_boxes)

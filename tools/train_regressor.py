@@ -3,7 +3,9 @@ import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
 from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
-    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS
+    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, \
+    TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS, INPUT_SIZE, FEATURE_DIMS, \
+    CONCAT, AUGMENT_PROBABILITY
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
@@ -62,20 +64,21 @@ os.makedirs(save_dir, exist_ok=True)
 logging = init_log(save_dir)
 _print = logging.info
 
-net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=256)
-# net = CGDModel(net, gd_config='SG', feature_dim=256, num_classes=256)
-# net = SwinTransformer(img_size=112, num_classes=256)
-# net = CoAtNet(112, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=256)
+img_size = INPUT_SIZE
+
+net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=FEATURE_DIMS)
+# net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
+# net = SwinTransformer(img_size=img_size, num_classes=FEATURE_DIMS)
+# net = CoAtNet(img_size, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
 
 # define trainloader and testloader
 # img_size = net.get_image_size(model_name)
-img_size = 112
 
-trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size)
+trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size, **AUGMENT_PROBABILITY)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
                                           shuffle=True, num_workers=8, drop_last=True)
-ArcMargin = ArcMarginProduct(in_features=256, out_features=trainset.class_nums)
-SparseCircle = SparseCircleLoss(m=0.25, emdsize=256, class_num=trainset.class_nums, gamma=64, use_cuda=True)
+ArcMargin = ArcMarginProduct(in_features=FEATURE_DIMS, out_features=trainset.class_nums)
+SparseCircle = SparseCircleLoss(m=0.25, emdsize=FEATURE_DIMS, class_num=trainset.class_nums, gamma=64, use_cuda=True)
 
 # nl: left_image_path
 # nr: right_image_path
@@ -150,7 +153,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
         for data in tqdm(testloader):
             for i in range(len(data)):
                 data[i] = data[i].cuda()
-            features = [test_inference(d, net).numpy() for d in data]
+            features = [test_inference(d, net, concat=CONCAT).numpy() for d in data]
             featureLs.append(features[0])
             featureRs.append(features[1])
         featureLs = np.concatenate(featureLs, axis=0)
