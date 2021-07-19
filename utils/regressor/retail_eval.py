@@ -17,14 +17,6 @@ import argparse
 import timm
 import math
 
-parser = argparse.ArgumentParser(description='Testing')
-parser.add_argument('--dataset_dir', type=str, default='./data/test', help='The path of test data')
-parser.add_argument('--resume', type=str, default='./model/efficientnetb4_99.95_0.592392.ckpt', help='The path pf save model')
-parser.add_argument('--feature_save_dir', type=str, default='./result/efficientnetb4_99.95_0.592392.mat',
-                    help='The path of the extract features save, must be .mat file')
-args = parser.parse_args()
-
-
 def getFeatureFromTorch(net, test_dataset, batch_size=1):
     """获得特征向量"""
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8, drop_last=False)
@@ -38,8 +30,8 @@ def getFeatureFromTorch(net, test_dataset, batch_size=1):
         Features.append(features)
         ItermClass.append(targets)
 
-    Features = torch.cat(Features, dim=0).cpu().numpy()
-    ItermClass = torch.cat(ItermClass, dim=0).numpy()
+    Features = torch.cat(Features, dim=0).cpu()
+    ItermClass = torch.cat(ItermClass, dim=0)
     result = {'feature': Features, 'class': ItermClass}
     return result
     # scipy.io.savemat(args.feature_save_dir, result)
@@ -70,7 +62,7 @@ def evaluation_num_fold(result, num=20):
     ACCs = np.zeros(num)
     Thres = np.zeros(num)
     # result = scipy.io.loadmat(root)  # 加载.mat文件
-    for i in tqdm(range(num)):  # 10个组
+    for i in tqdm(range(num)):  # n个组
         fold = result['fold']
         flags = result['flag']
         featureLs = result['fl']

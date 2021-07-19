@@ -93,11 +93,16 @@ def multi_matching(img, database, category, net, batch_size=20):
     """
     features = multi_image2embedding(img, net, batch_size)  # (N, 256)
 
-    feature_normalized, mat_normalized = F.normalize(torch.tensor(features)).cpu().numpy(), \
-                                         F.normalize(torch.tensor(database)).cpu().numpy()
-    scores = np.sum(np.multiply(feature_normalized, mat_normalized), 1)
+    features_normalized = F.normalize(features)
+    database_normalized = F.normalize(database)
+    cosine = F.linear(features_normalized, database_normalized)
+    similarity = cosine.permute(1, 0).contiguous().numpy()
 
-    similarity = np.max(scores)
+    # feature_normalized, mat_normalized = F.normalize(features).numpy(), \
+    #                                      F.normalize(database).numpy()
+    # scores = np.sum(np.multiply(feature_normalized, mat_normalized), 1)
+    #
+    # similarity = np.max(scores)
 
     best_similarity = np.max(similarity, axis=0)  # (N, )
     index = np.argmax(similarity, axis=0)  # (N, )

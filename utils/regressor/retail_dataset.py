@@ -102,33 +102,50 @@ def diff_imgs(img_names1, img_names2)   :
     index2 = random.randint(0, len(img_names2) - 1)
     return img_names1[index1], img_names2[index2]
 
-
 def parseList(pair_path):
     with open(pair_path, 'r') as f:
         pairs = [p.strip() for p in f.readlines()]
-    folder_name = 'cropped_test'
+
+    random.shuffle(pairs)
     nameLs = []
     nameRs = []
     folds = []
     flags = []
     for i, p in enumerate(pairs):
-        p = p.split(' ')
-        if len(p) == 3:  # 同一个人的照片组成对比组
-            nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
-            nameR = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[2])))
-            fold = i // 2400
-            flag = 1  # 正正对比
-        elif len(p) == 4:  # 不同人的照片组成对比组
-            nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
-            nameR = os.path.join(pair_path, folder_name, p[2], '{}.jpg'.format(int(p[3])))
-            fold = i // 2400
-            flag = -1  # 正负对比
+        nameL, nameR, flag, fold = p.split(' ')
         nameLs.append(nameL)
         nameRs.append(nameR)
-        folds.append(fold)
-        flags.append(flag)
-    # print(nameLs)
-    return [nameLs, nameRs, folds, flags]
+        flags.append(int(flag))
+        folds.append(int(fold))
+
+    return [nameLs, nameRs, np.array(flags), np.array(folds)]
+
+# def parseList(pair_path):
+#     with open(pair_path, 'r') as f:
+#         pairs = [p.strip() for p in f.readlines()]
+#     folder_name = 'cropped_test'
+#     nameLs = []
+#     nameRs = []
+#     folds = []
+#     flags = []
+#     for i, p in enumerate(pairs):
+#         p = p.split(' ')
+#         if len(p) == 3:  # 同一个人的照片组成对比组
+#             nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
+#             nameR = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[2])))
+#             fold = i // 2400
+#             flag = 1  # 正正对比
+#         elif len(p) == 4:  # 不同人的照片组成对比组
+#             nameL = os.path.join(pair_path, folder_name, p[0], '{}.jpg'.format(int(p[1])))
+#             nameR = os.path.join(pair_path, folder_name, p[2], '{}.jpg'.format(int(p[3])))
+#             fold = i // 2400
+#             flag = -1  # 正负对比
+#         nameLs.append(nameL)
+#         nameRs.append(nameR)
+#         folds.append(fold)
+#         flags.append(flag)
+#     # print(nameLs)
+#     return [nameLs, nameRs, folds, flags]
 
 
 class RetailDataset(object):
@@ -191,22 +208,22 @@ class RetailTrain(object):
         self.root = root
         self.img_size = img_size
 
-        img_txt_dir = os.path.join(root, 'train.txt')
-        image_list = []
-        label_list = []
-        with open(img_txt_dir) as f:
-            img_label_list = f.read().splitlines()
-        for info in img_label_list:
-            image_dir, label_name = info.split(' ')
-            image_list.append(os.path.join(root, 'train', image_dir))
-            label_list.append(int(label_name))
-
-        self.image_list = image_list
-        self.label_list = label_list
-        self.class_nums = len(np.unique(self.label_list))
-        # self.image_list = glob.glob(osp.join(self.root, '*/*'))
-        # self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
-        # self.class_nums = len(glob.glob(osp.join(self.root, '*')))
+        # img_txt_dir = os.path.join(root, 'train.txt')
+        # image_list = []
+        # label_list = []
+        # with open(img_txt_dir) as f:
+        #     img_label_list = f.read().splitlines()
+        # for info in img_label_list:
+        #     image_dir, label_name = info.split(' ')
+        #     image_list.append(os.path.join(root, 'train', image_dir))
+        #     label_list.append(int(label_name))
+        #
+        # self.image_list = image_list
+        # self.label_list = label_list
+        # self.class_nums = len(np.unique(self.label_list))
+        self.image_list = glob.glob(osp.join(self.root, '*/*'))
+        self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
+        self.class_nums = len(glob.glob(osp.join(self.root, '*')))
 
     def __getitem__(self, index):
         img_path = self.image_list[index]

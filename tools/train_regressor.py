@@ -1,6 +1,6 @@
 import os.path as osp
 import sys
-from utils.regressor.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
+from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
     TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList

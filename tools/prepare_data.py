@@ -4,7 +4,7 @@ import os.path as osp
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.append(BASE_DIR)
 from utils.regressor import retail_dataset
-from utils.regressor.config import A_PIC_ROOT, A_JSON_FILE, B_PIC_ROOT, B_JSON_FILE,\
+from utils.config import A_PIC_ROOT, A_JSON_FILE, B_PIC_ROOT, B_JSON_FILE,\
     TRAIN_SAVE_DIR, TEST_PIC_ROOT, TEST_JSON_FILE, TEST_SAVE_DIR, PAIR_PATH, \
     SIM_RATIO, TOTAL_PAIR, INTERVAL, DETECTOR_TRAIN_DATA_DIR, DETECTOR_VAL_DATA_DIR
 import subprocess
@@ -13,6 +13,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--regressor-data', action='store_true', help='prepare regressor data')
 parser.add_argument('--detector-data', action='store_true', help='prepare detector data')
+parser.add_argument('--generate-pair', action='store_true', help='generate pair')
 
 opt = parser.parse_args()
 # for regressor
@@ -23,6 +24,9 @@ if opt.regressor_data:
 
     retail_dataset.crop_images(TEST_PIC_ROOT, TEST_JSON_FILE, TEST_SAVE_DIR, suffix='b')
 
+
+if opt.generate_pair:
+    print('generate pair.txt')
     retail_dataset.gen_pair(TEST_SAVE_DIR, save_path=PAIR_PATH, 
                             sim_ratio=SIM_RATIO, total_num=TOTAL_PAIR, 
                             interval=INTERVAL)
