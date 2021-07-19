@@ -6,7 +6,8 @@ sys.path.append(BASE_DIR)
 from utils.regressor import retail_dataset
 from utils.config import A_PIC_ROOT, A_JSON_FILE, B_PIC_ROOT, B_JSON_FILE,\
     TRAIN_SAVE_DIR, TEST_PIC_ROOT, TEST_JSON_FILE, TEST_SAVE_DIR, PAIR_PATH, \
-    SIM_RATIO, TOTAL_PAIR, INTERVAL, DETECTOR_TRAIN_DATA_DIR, DETECTOR_VAL_DATA_DIR
+    SIM_RATIO, TOTAL_PAIR, INTERVAL, DETECTOR_TRAIN_DATA_DIR, DETECTOR_VAL_DATA_DIR,\
+    DETECTOR_TEST_DATA_DIR
 import subprocess
 import argparse
 
@@ -36,7 +37,9 @@ if opt.generate_pair:
 if opt.detector_data:
     print('detector')
     script_path = osp.join(BASE_DIR, 'utils/coco2yolo.py')
-    cmd_train = f"python {script_path} --json-file {A_JSON_FILE} --save-dir {DETECTOR_TRAIN_DATA_DIR} --images-source {A_PIC_ROOT}"
-    cmd_test = f"python {script_path} --json-file {B_JSON_FILE} --save-dir {DETECTOR_VAL_DATA_DIR} --images-source {B_PIC_ROOT}"
+    cmd_train = f"python {script_path} --json-file {A_JSON_FILE} --images-source {A_PIC_ROOT} --save-dir {DETECTOR_TRAIN_DATA_DIR} --single-cls"
+    cmd_val = f"python {script_path} --json-file {B_JSON_FILE} --images-source {B_PIC_ROOT} --save-dir {DETECTOR_VAL_DATA_DIR} --single-cls"
+    cmd_test = f"python {script_path} --json-file {TEST_JSON_FILE} --images-source {TEST_PIC_ROOT} --save-dir {DETECTOR_TEST_DATA_DIR} --single-cls"
     subprocess.call(cmd_train, shell=True)
+    subprocess.call(cmd_val, shell=True)
     subprocess.call(cmd_test, shell=True)

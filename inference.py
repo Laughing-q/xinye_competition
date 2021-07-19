@@ -3,6 +3,7 @@ BASE_DIR = osp.abspath(osp.dirname(__file__))
 import sys
 sys.path.insert(0, BASE_DIR)
 from model.detector import Yolov5
+from model.swin_transformer import SwinTransformer
 from utils.general import xyxy2xywh
 from utils.regressor.distance_calculation_arcface import multi_matching
 from utils.regressor import retail_eval
@@ -20,8 +21,8 @@ import scipy.io
 random.seed(0)
 
 
-REGRESS_THRES = 0
-DETECT_THRES = 0.3
+REGRESS_THRES = 0.276
+DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (112, 112)  # (w, h)
 DETECT_MODE = 'x'
@@ -32,7 +33,8 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_best.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_best.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientnetb4_99.95_0.592392.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientnetb4_99.95_0.592392.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swintransformer+circleloss_99.9792_0.2760.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
 
@@ -54,7 +56,12 @@ def run():
     detector.show = False
     
     # efficientnet
-    regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=256).cuda()
+    # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=256).cuda()
+    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
+    # regressor.eval()
+
+    # swin transformer
+    regressor = SwinTransformer(img_size=112, num_classes=256).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
 

@@ -64,6 +64,12 @@ parser.add_argument(
     default='',
     # parser.add_argument('--images-source', type=str, default='',
     help='copy images from images-source to save-dir/images')
+parser.add_argument(
+    '--single-cls',
+    action='store_true',
+    default=False,
+    help='Whether use single class')
+
 opt = parser.parse_args()
 print(opt)
 
@@ -80,6 +86,8 @@ coco = COCO(json_file)
 class_name = opt.class_name  # 设置为空，则取全部的类别
 
 intersection = opt.intersection
+
+single_cls = opt.single_cls
 
 catId = coco.getCatIds(catNms=class_name)  # 1~90
 
@@ -117,7 +125,7 @@ for img in tqdm.tqdm(coco_imgs, total=len(coco_imgs)):
             box = convert((img_width, img_height), ann["bbox"])
             f_txt.write(
                 "%s %s %s %s %s\n" %
-                (ann["category_id"], box[0], box[1], box[2], box[3]))
+                (0 if single_cls else ann["category_id"], box[0], box[1], box[2], box[3]))
     f_txt.close()
     # if opt.mask:
     #     mask_npy = np.stack(mask_npy, axis=0)

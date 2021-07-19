@@ -41,6 +41,7 @@ INTERVAL = 500
 """detector"""
 DETECTOR_TRAIN_DATA_DIR = osp.join(BASE_DIR, 'data/retail/train')
 DETECTOR_VAL_DATA_DIR = osp.join(BASE_DIR, 'data/retail/val')
+DETECTOR_TEST_DATA_DIR = osp.join(BASE_DIR, 'data/retail/test')
 
 """CoAtNet"""
 REPEAT_NUM = {'CoAtNet-0': [2, 2, 3, 5, 2],
