@@ -2,17 +2,11 @@ import os.path as osp
 import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
-from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
-    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, \
-    TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS, INPUT_SIZE, FEATURE_DIMS, \
-    CONCAT, AUGMENT_PROBABILITY, USE_CGD, NUM_WORKERS
+from utils.config import *
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
-from model.arcface import ArcMarginProduct
 from model.regressor.cgd import CGDModel
-
-from torch import nn
 from torch.nn import DataParallel
 from datetime import datetime
 from tqdm.autonotebook import tqdm
@@ -20,15 +14,19 @@ from torch.optim import lr_scheduler
 import torch.optim as optim
 import time
 import numpy as np
-import scipy.io
-import timm
 import os
 import logging
 import torch.utils.data
-from model.CircleLoss import SparseCircleLoss
-from model.swin_transformer import SwinTransformer
-from model.CoAtNet import CoAtNet
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--backbone', default='efficient_b4', help='Backbone')
+parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
+parser.add_argument('--batch_size', type=int, default=512, help='Batch_size')
+parser.add_argument('--gpu', default='0, 1', help='GPUs')
+parser.add_argument('--resolution', type=int, default=112, help='Input Size')
+opt = parser.parse_args()
+print(opt)
 
 
 def init_log(output_dir):
@@ -54,7 +52,7 @@ else:
         gpu_list += str(gpu_id)
         if i != len(GPU) - 1:
             gpu_list += ','
-os.environ['CUDA_VISIBLE_DEVICES'] = gpu_list
+os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu
 
 # other init
 start_epoch = 1
@@ -64,28 +62,27 @@ os.makedirs(save_dir, exist_ok=True)
 logging = init_log(save_dir)
 _print = logging.info
 
-img_size = INPUT_SIZE
+img_size = opt.resolution
 
-net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=FEATURE_DIMS)
+net = NET[opt.backbone].cuda()
+
+loss = HEAD[opt.loss_head].cuda()
+
 if USE_CGD:
     net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
-# net = SwinTransformer(img_size=img_size, num_classes=FEATURE_DIMS)
-# net = CoAtNet(img_size, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
 
 # define trainloader and testloader
 # img_size = net.get_image_size(model_name)
 
 trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size, **AUGMENT_PROBABILITY)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=opt.batch_size,
                                           shuffle=True, num_workers=NUM_WORKERS, drop_last=True)
-ArcMargin = ArcMarginProduct(in_features=FEATURE_DIMS, out_features=trainset.class_nums)
-SparseCircle = SparseCircleLoss(m=0.25, emdsize=FEATURE_DIMS, class_num=trainset.class_nums, gamma=64, use_cuda=True)
 
 # nl: left_image_path
 # nr: right_image_path
 nl, nr, flags, folds = parseList(pair_path=PAIR_PATH)
 testdataset = RetailTest(nl, nr, img_size=img_size)
-testloader = torch.utils.data.DataLoader(testdataset, batch_size=BATCH_SIZE,
+testloader = torch.utils.data.DataLoader(testdataset, batch_size=opt.batch_size,
                                          shuffle=False, num_workers=NUM_WORKERS, drop_last=False)
 
 if RESUME:
@@ -95,17 +92,11 @@ if RESUME:
 
 # define optimizers
 optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
-
 exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[36, 52, 58], gamma=0.1)
 
-net = net.cuda()
-ArcMargin = ArcMargin.cuda()
-SparseCircle = SparseCircle.cuda()
 if multi_gpus:
     net = DataParallel(net)
-    # ArcMargin = DataParallel(ArcMargin)
-    SparseCircle = DataParallel(SparseCircle)
-criterion = torch.nn.CrossEntropyLoss()
+    loss = DataParallel(loss)
 
 best_acc = 0.0
 best_epoch = 0
@@ -126,10 +117,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
         optimizer_ft.zero_grad()
 
         raw_logits = net(img)
-
-        # output = ArcMargin(raw_logits, label)
-        # total_loss = criterion(output, label)
-        total_loss = SparseCircle(raw_logits, label)
+        total_loss = loss(raw_logits, label)
         if len(GPU) != 1:
             total_loss = torch.mean(total_loss)
         total_loss.backward()

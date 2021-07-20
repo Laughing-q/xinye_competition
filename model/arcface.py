@@ -5,8 +5,31 @@ import torch
 import math
 
 
+class LabelSmoothingCrossEntropy(nn.Module):
+    """
+    NLL loss with label smoothing.
+    """
+    def __init__(self, smoothing=0.1):
+        """
+        Constructor for the LabelSmoothing module.
+        :param smoothing: label smoothing factor
+        """
+        super(LabelSmoothingCrossEntropy, self).__init__()
+        assert smoothing < 1.0
+        self.smoothing = smoothing
+        self.confidence = 1. - smoothing
+
+    def forward(self, x, target):
+        logprobs = F.log_softmax(x, dim=-1)
+        nll_loss = -logprobs.gather(dim=-1, index=target.unsqueeze(1))
+        nll_loss = nll_loss.squeeze(1)
+        smooth_loss = -logprobs.mean(dim=-1)
+        loss = self.confidence * nll_loss + self.smoothing * smooth_loss
+        return loss.mean()
+
+
 class ArcMarginProduct(nn.Module):
-    def __init__(self, in_features=128, out_features=200, s=32.0, m=0.50, easy_margin=False):
+    def __init__(self, in_features=128, out_features=200, s=32.0, m=0.50, easy_margin=False, label_smooth=False):
         super(ArcMarginProduct, self).__init__()
         self.in_features = in_features
         self.out_features = out_features
@@ -16,7 +39,7 @@ class ArcMarginProduct(nn.Module):
         nn.init.xavier_uniform_(self.weight)
         # init.kaiming_uniform_()
         # self.weight.data.normal_(std=0.001)
-
+        self.loss_func = LabelSmoothingCrossEntropy(0.1) if label_smooth else nn.CrossEntropyLoss()
         self.easy_margin = easy_margin
         self.cos_m = math.cos(m)
         self.sin_m = math.sin(m)
@@ -38,4 +61,7 @@ class ArcMarginProduct(nn.Module):
         one_hot.scatter_(1, label.view(-1, 1).long(), 1)
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)  # 每个label的1对应点的cos加入margin，0点保持原来的cos
         output *= self.s
-        return output
+
+        loss = self.loss_func(output, label)
+
+        return loss
