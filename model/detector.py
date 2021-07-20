@@ -26,7 +26,7 @@ class Yolov5:
         # # pt -> pth, path agnostic
         # self.model = torch.load(self.weights, map_location=self.device)['model']
         # with open(weight_path.replace('.pt', '.yaml'), 'w') as f:
-        #     yaml.dump(self.model.yaml, f, sort_keys=False)
+        #     yaml.safe_dump(self.model.yaml, f, sort_keys=False)
         # torch.save(self.model.float().state_dict(), weight_path.replace('.pt', '.pth'))
         # self.model.float().fuse().eval()
 

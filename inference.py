@@ -22,7 +22,7 @@ import scipy.io
 random.seed(0)
 
 
-REGRESS_THRES = 0.276
+REGRESS_THRES = 0.3064
 DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (INPUT_SIZE, INPUT_SIZE)  # (w, h)
@@ -31,11 +31,13 @@ REGRESS_BATCH_SIZE = 32
 COLORS = [[random.randint(0, 255) for _ in range(3)]
                for _ in range(116)]
 
-DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_best.pth')
-DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_best.yaml')
+# DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_best.pth')
+DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_single.pth')
+# DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_best.yaml')
+DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
 
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientnetb4_99.95_0.592392.ckpt')
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swintransformer+circleloss_99.9792_0.2760.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientnetb4+circleloss_99.9292_0.3064.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swintransformer+circleloss_99.9792_0.2760.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
 
@@ -57,14 +59,14 @@ def run():
     detector.show = False
     
     # efficientnet
-    # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=256).cuda()
-    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
-    # regressor.eval()
-
-    # swin transformer
-    regressor = SwinTransformer(img_size=112, num_classes=256).cuda()
+    regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=256).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
+
+    # swin transformer
+    # regressor = SwinTransformer(img_size=112, num_classes=256).cuda()
+    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
+    # regressor.eval()
 
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH, 
