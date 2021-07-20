@@ -232,9 +232,9 @@ class RetailTrain(object):
         img_path = self.image_list[index]
         target = self.label_list[index]
         img = Image.open(img_path)
-        # img = img.resize((self.img_size, self.img_size))
         img = np.array(img)
         img = self.transform(image=img)["image"]
+        img = cv2.resize(img, (self.img_size, self.img_size))
 
         # if len(img.shape) == 2:
         #     img = np.stack([img] * 3, 2)
@@ -300,7 +300,7 @@ if __name__ == "__main__":
         A.ColorJitter(p=0)])
 
     # Read an image with OpenCV and convert it to the RGB colorspace
-    image = Image.open('/home/laughing/Downloads/jensen.jpg')
+    image = Image.open('/home/laughing/图片/5.png')
     image = np.array(image)
     # image = cv2.imread("/home/laughing/Downloads/jensen.jpg")
     # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -308,6 +308,7 @@ if __name__ == "__main__":
     # Augment an image
     transformed = transform(image=image)
     transformed_image = transformed["image"]
+    print(transformed_image.shape)
     cv2.imshow('ori', cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
     cv2.imshow('p', cv2.cvtColor(transformed_image, cv2.COLOR_RGB2BGR))
     cv2.waitKey(0)

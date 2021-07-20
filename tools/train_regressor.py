@@ -5,7 +5,7 @@ sys.path.insert(0, BASE_DIR)
 from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
     TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, \
     TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS, INPUT_SIZE, FEATURE_DIMS, \
-    CONCAT, AUGMENT_PROBABILITY
+    CONCAT, AUGMENT_PROBABILITY, USE_CGD, NUM_WORKERS
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
@@ -67,7 +67,8 @@ _print = logging.info
 img_size = INPUT_SIZE
 
 net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=FEATURE_DIMS)
-# net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
+if USE_CGD:
+    net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
 # net = SwinTransformer(img_size=img_size, num_classes=FEATURE_DIMS)
 # net = CoAtNet(img_size, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
 
@@ -76,7 +77,7 @@ net = timm.create_model('mobilenetv3_large_100', pretrained=False, num_classes=F
 
 trainset = RetailTrain(root=TRAIN_SAVE_DIR, img_size=img_size, **AUGMENT_PROBABILITY)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
-                                          shuffle=True, num_workers=8, drop_last=True)
+                                          shuffle=True, num_workers=NUM_WORKERS, drop_last=True)
 ArcMargin = ArcMarginProduct(in_features=FEATURE_DIMS, out_features=trainset.class_nums)
 SparseCircle = SparseCircleLoss(m=0.25, emdsize=FEATURE_DIMS, class_num=trainset.class_nums, gamma=64, use_cuda=True)
 
@@ -85,7 +86,7 @@ SparseCircle = SparseCircleLoss(m=0.25, emdsize=FEATURE_DIMS, class_num=trainset
 nl, nr, flags, folds = parseList(pair_path=PAIR_PATH)
 testdataset = RetailTest(nl, nr, img_size=img_size)
 testloader = torch.utils.data.DataLoader(testdataset, batch_size=BATCH_SIZE,
-                                         shuffle=False, num_workers=8, drop_last=False)
+                                         shuffle=False, num_workers=NUM_WORKERS, drop_last=False)
 
 if RESUME:
     ckpt = torch.load(RESUME)

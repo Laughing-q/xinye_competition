@@ -3,7 +3,12 @@ import os
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 # BASE_DIR = osp.abspath('.')
 
-"""Training and testing configs"""
+NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
+NUM_WORKERS = min(8, os.cpu_count())  # number of torch dataloader cpu workers
+
+"""Regressor"""
+
+# Training and testing configs
 BATCH_SIZE = 128
 SAVE_FREQ = 1
 TEST_FREQ = 1
@@ -12,6 +17,7 @@ TOTAL_EPOCH = 300
 INPUT_SIZE = 112
 FEATURE_DIMS = 256
 CONCAT = True  # Whether to concat the prediction results
+USE_CGD = False
 
 RESUME = 0
 SAVE_DIR = './arcface_runs'
@@ -19,7 +25,6 @@ MODEL_PRE = 'Retail_'
 
 GPU = 0, 1
 
-"""regressor"""
 # train data prepare, crop images
 A_PIC_ROOT = osp.join(BASE_DIR, 'data/train/a_images')
 A_JSON_FILE = osp.join(BASE_DIR, 'data/train/a_annotations.json')
@@ -50,7 +55,7 @@ AUGMENT_PROBABILITY = {
 }
 
 
-"""detector"""
+"""Detector"""
 DETECTOR_TRAIN_DATA_DIR = osp.join(BASE_DIR, 'data/retail/train')
 DETECTOR_VAL_DATA_DIR = osp.join(BASE_DIR, 'data/retail/val')
 DETECTOR_TEST_DATA_DIR = osp.join(BASE_DIR, 'data/retail/test')

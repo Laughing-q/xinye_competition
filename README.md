@@ -39,10 +39,10 @@ retail for detector training.
 ## TODO List
 
 ### Regressor
-- [ ] more feature dims(cancel the feature concat)
-- [ ] more augmentation
+- [x] more feature dims(cancel the feature concat)
+- [x] more augmentation
 - [ ] add auxiliary class loss 
-- [x] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
+- [ ] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
 - [ ] [CoAtNet](https://arxiv.org/pdf/2106.04803v1.pdf)
 - [ ] [VOLO](https://arxiv.org/pdf/2106.13112v2.pdf)
 

@@ -3,8 +3,10 @@ from .retail_dataset import RetailDataset
 
 from tqdm.autonotebook import tqdm
 from PIL import Image
+from utils.config import NUM_THREADS
 
 import matplotlib.pyplot as plt
+from multiprocessing import Pool
 import sys
 import os
 import os.path as osp
@@ -56,36 +58,67 @@ def getThreshold(scores, flags, thrNum):
     return bestThreshold
 
 
+def evaluation_one_fold(args):
+    result, i = args
+    fold = result['fold']
+    flags = result['flag']
+    featureLs = result['fl']
+    featureRs = result['fr']
+
+    valFold = fold != i
+    testFold = fold == i
+
+    featureLs = featureLs / np.expand_dims(np.sqrt(np.sum(np.power(featureLs, 2), 1)), 1)  # 标准化
+    featureRs = featureRs / np.expand_dims(np.sqrt(np.sum(np.power(featureRs, 2), 1)), 1)
+    scores = np.sum(np.multiply(featureLs, featureRs), 1)
+
+    # featureLs_normalized = f.normalize(torch.tensor(featureLs))
+    # featureRs_normalized = f.normalize(torch.tensor(featureRs))
+    # cosine = f.linear(featureLs_normalized, featureRs_normalized)
+    # scores = np.array(cosine)
+
+    threshold = getThreshold(scores[valFold], flags[valFold], 10000)
+    accs = getAccuracy(scores[testFold], flags[testFold], threshold)
+    return accs, threshold
+
+
 def evaluation_num_fold(result, num=20):
     """将测试集分成了10个组，分别对十个组进行evaluation"""
     num = math.ceil(num)
     ACCs = np.zeros(num)
     Thres = np.zeros(num)
     # result = scipy.io.loadmat(root)  # 加载.mat文件
-    for i in tqdm(range(num)):  # n个组
-        fold = result['fold']
-        flags = result['flag']
-        featureLs = result['fl']
-        featureRs = result['fr']
+    with Pool(NUM_THREADS) as p:
+        pbar = tqdm(p.imap(evaluation_one_fold, [(result, i) for i in range(num)]), total=num)
+        for i, (accs, thres) in enumerate(pbar):
+            ACCs[i] = accs
+            Thres[i] = thres
+            
 
-        valFold = fold != i
-        testFold = fold == i
-
-        featureLs = featureLs / np.expand_dims(np.sqrt(np.sum(np.power(featureLs, 2), 1)), 1)  # 标准化
-        featureRs = featureRs / np.expand_dims(np.sqrt(np.sum(np.power(featureRs, 2), 1)), 1)
-        scores = np.sum(np.multiply(featureLs, featureRs), 1)
-
-        # featureLs_normalized = f.normalize(torch.tensor(featureLs))
-        # featureRs_normalized = f.normalize(torch.tensor(featureRs))
-        # cosine = f.linear(featureLs_normalized, featureRs_normalized)
-        # scores = np.array(cosine)
-
-        threshold = getThreshold(scores[valFold], flags[valFold], 10000)
-        ACCs[i] = getAccuracy(scores[testFold], flags[testFold], threshold)
-        Thres[i] = threshold
-    #     print('{}    {:.2f}'.format(i+1, ACCs[i] * 100))
-    # print('--------')
-    # print('AVE    {:.2f}'.format(np.mean(ACCs) * 100))
+    # for i in tqdm(range(num)):  # n个组
+    #     fold = result['fold']
+    #     flags = result['flag']
+    #     featureLs = result['fl']
+    #     featureRs = result['fr']
+    #
+    #     valFold = fold != i
+    #     testFold = fold == i
+    #
+    #     featureLs = featureLs / np.expand_dims(np.sqrt(np.sum(np.power(featureLs, 2), 1)), 1)  # 标准化
+    #     featureRs = featureRs / np.expand_dims(np.sqrt(np.sum(np.power(featureRs, 2), 1)), 1)
+    #     scores = np.sum(np.multiply(featureLs, featureRs), 1)
+    #
+    #     # featureLs_normalized = f.normalize(torch.tensor(featureLs))
+    #     # featureRs_normalized = f.normalize(torch.tensor(featureRs))
+    #     # cosine = f.linear(featureLs_normalized, featureRs_normalized)
+    #     # scores = np.array(cosine)
+    #
+    #     threshold = getThreshold(scores[valFold], flags[valFold], 10000)
+    #     ACCs[i] = getAccuracy(scores[testFold], flags[testFold], threshold)
+    #     Thres[i] = threshold
+    # #     print('{}    {:.2f}'.format(i+1, ACCs[i] * 100))
+    # # print('--------')
+    # # print('AVE    {:.2f}'.format(np.mean(ACCs) * 100))
     return ACCs, Thres
 
 
