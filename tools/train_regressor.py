@@ -2,7 +2,11 @@ import os.path as osp
 import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
-from utils.config import *
+from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
+    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, \
+    TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS, IMAGE_RESOLUTION, FEATURE_DIMS, \
+    CONCAT, AUGMENT_PROBABILITY, USE_CGD, NUM_WORKERS 
+from model.regressor.create_regressor import create_model, create_metric
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
@@ -20,7 +24,7 @@ import torch.utils.data
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--backbone', default='efficient_b4', help='Backbone')
+parser.add_argument('--backbone', default='efficientnet_b4', help='Backbone')
 parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
 parser.add_argument('--batch_size', type=int, default=512, help='Batch_size')
 parser.add_argument('--gpu', default='0, 1', help='GPUs')
@@ -64,9 +68,9 @@ _print = logging.info
 
 img_size = opt.resolution
 
-net = NET[opt.backbone].cuda()
+net = create_model(name=opt.backbone, pretrained=False).cuda()
 
-loss = HEAD[opt.loss_head].cuda()
+loss = create_metric(opt.loss_head).cuda()
 
 if USE_CGD:
     net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)

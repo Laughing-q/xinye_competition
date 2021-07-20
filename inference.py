@@ -5,12 +5,12 @@ import sys
 
 sys.path.insert(0, BASE_DIR)
 from model.detector import Yolov5
-from model.swin_transformer import SwinTransformer
 from utils.general import xyxy2xywh
 from utils.regressor.distance_calculation_arcface import multi_matching
+from model.regressor.create_regressor import create_model
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
-from utils.config import IMAGE_RESOLUTION, NET, CONCAT
+from utils.config import IMAGE_RESOLUTION, CONCAT, FEATURE_DIMS
 import torch
 import cv2
 import random
@@ -37,7 +37,7 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_single.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientnetb4_99.95_0.592392.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_99.8333_0.1953.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swintransformer+circleloss_99.9792_0.2760.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -61,14 +61,15 @@ def run():
     detector.show = False
 
     # efficientnet
-    # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=256).cuda()
-    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
-    # regressor.eval()
-
-    # swin transformer
-    regressor = NET['efficient_b4'].cuda()
+    # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=FEATURE_DIMS).cuda()
+    regressor = create_model('efficientnet_b4', pretrained=False).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
+
+    # swin transformer
+    # regressor = NET['swin_transformer'].cuda()
+    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
+    # regressor.eval()
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH,
                                              json_file=RETRIEVAL_JSON_PATH,

@@ -2,11 +2,6 @@ import os.path as osp
 import os
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 # BASE_DIR = osp.abspath('.')
-from model.arcface import ArcMarginProduct
-from model.swin_transformer import SwinTransformer
-import timm
-from model.CoAtNet import CoAtNet
-from model.CircleLoss import SparseCircleLoss
 
 NUM_THREADS = min(8, os.cpu_count())  # number of multiprocessing threads
 NUM_WORKERS = min(8, os.cpu_count())  # number of torch dataloader cpu workers
@@ -30,16 +25,6 @@ DIMS = {'CoAtNet-0': [64, 96, 192, 384, 768],
         }
 
 
-"""Regressor Model"""
-NET = {'efficient_b4': timm.create_model('efficientnet_b4', pretrained=True, num_classes=FEATURE_DIMS),
-       'swin_transformer': SwinTransformer(img_size=IMAGE_RESOLUTION, num_classes=FEATURE_DIMS),
-       'CoATNet': CoAtNet(IMAGE_RESOLUTION, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=FEATURE_DIMS),
-       }
-
-HEAD = {'Arcface': ArcMarginProduct(in_features=256, out_features=FEATURE_DIMS),
-        'Circleloss': SparseCircleLoss(m=0.25, emdsize=FEATURE_DIMS, class_num=FEATURE_DIMS, gamma=64, use_cuda=True),
-        }
-
 
 """Regressor"""
 
@@ -54,7 +39,7 @@ SAVE_DIR = './second_match'
 MODEL_PRE = 'Retail_'
 
 GPU = 0, 1
-CONCAT = True  # Whether to concat the prediction results
+CONCAT = False  # Whether to concat the prediction results
 USE_CGD = False
 
 
