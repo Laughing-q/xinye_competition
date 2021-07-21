@@ -2,15 +2,13 @@ import os.path as osp
 import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
-from utils.config import BATCH_SIZE, SAVE_FREQ, RESUME, SAVE_DIR, \
-    TEST_FREQ, TOTAL_EPOCH, MODEL_PRE, GPU, TRAIN_SAVE_DIR, PAIR_PATH, \
-    TOTAL_PAIR, INTERVAL, REPEAT_NUM, DIMS, IMAGE_RESOLUTION, FEATURE_DIMS, \
-    CONCAT, AUGMENT_PROBABILITY, USE_CGD, NUM_WORKERS 
+from utils.config import TRAIN_SAVE_DIR, PAIR_PATH, \
+    TOTAL_PAIR, INTERVAL, CONCAT, AUGMENT_PROBABILITY, NUM_WORKERS, save_args
 from model.regressor.create_regressor import create_model, create_metric
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
+from utils.regressor.plots import plot_recognition_results
 from utils.regressor.distance_calculation_arcface import test_inference
-from model.regressor.cgd import CGDModel
 from torch.nn import DataParallel
 from datetime import datetime
 from tqdm.autonotebook import tqdm
@@ -19,16 +17,25 @@ import torch.optim as optim
 import time
 import numpy as np
 import os
+import os.path as osp
 import logging
 import torch.utils.data
 import argparse
+import yaml
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--backbone', default='efficientnet_b4', help='Backbone')
-parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
-parser.add_argument('--batch_size', type=int, default=512, help='Batch_size')
-parser.add_argument('--gpu', default='0, 1', help='GPUs')
-parser.add_argument('--resolution', type=int, default=112, help='Input Size')
+parser.add_argument('--backbone', default='mobilenetv3_large_100', help='Backbone')
+parser.add_argument('--loss_head', default='Circleloss', help='Loss head')
+parser.add_argument('--epochs', type=int, default=5, help='Total epochs')
+parser.add_argument('--input-size', type=int, default=112, help='Input Size')
+parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
+parser.add_argument('--resume', type=str, default='', help='Resume weights path')
+parser.add_argument('--gpu', type=str, default='0, 1', help='GPUs')
+parser.add_argument('--save-dir', type=str, default='./second_match', help='The path to save log and weights')
+parser.add_argument('--name', type=str, default='Retail_v2_', help='save to save_dir/name')
+parser.add_argument('--save-interval', type=int, default=1, help='The interval of saving model')
+parser.add_argument('--test-interval', type=int, default=1, help='The interval of testing model')
+parser.add_argument('--use-cgd', action='store_true', default=False, help='Whether to use CGD')
 opt = parser.parse_args()
 print(opt)
 
@@ -46,34 +53,38 @@ def init_log(output_dir):
 
 
 # gpu init
-gpu_list = ''
-multi_gpus = True
-if isinstance(GPU, int):
-    gpu_list = str(GPU)
-else:
+multi_gpus = False
+if torch.cuda.device_count() > 1 and len(opt.gpu) > 1:
     multi_gpus = True
-    for i, gpu_id in enumerate(GPU):
-        gpu_list += str(gpu_id)
-        if i != len(GPU) - 1:
-            gpu_list += ','
 os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu
 
 # other init
 start_epoch = 1
-save_dir = os.path.join(SAVE_DIR, MODEL_PRE + 'v2_' + datetime.now().strftime('%Y%m%d_%H%M%S'))
+save_dir = os.path.join(opt.save_dir, opt.name + datetime.now().strftime('%Y%m%d_%H%M%S'))
 os.makedirs(save_dir, exist_ok=True)
+
+weights_dir = osp.join(save_dir, 'weights')
+os.makedirs(weights_dir, exist_ok=True)
+
+results_file = osp.join(save_dir, 'results.txt')
+
+with open(osp.join(save_dir, 'opt.yaml'), 'w') as f:
+    yaml.safe_dump(vars(opt), f, sort_keys=False)
+
+with open(osp.join(save_dir, 'config.yaml'), 'w') as f:
+    yaml.safe_dump(save_args, f, sort_keys=False)
+
 
 logging = init_log(save_dir)
 _print = logging.info
 
-img_size = opt.resolution
+img_size = opt.input_size
 
-net = create_model(name=opt.backbone, pretrained=False).cuda()
+net = create_model(name=opt.backbone, pretrained=False, 
+                   input_size=img_size, cgd=opt.use_cgd).cuda()
 
 loss = create_metric(opt.loss_head).cuda()
 
-if USE_CGD:
-    net = CGDModel(net, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
 
 # define trainloader and testloader
 # img_size = net.get_image_size(model_name)
@@ -89,8 +100,8 @@ testdataset = RetailTest(nl, nr, img_size=img_size)
 testloader = torch.utils.data.DataLoader(testdataset, batch_size=opt.batch_size,
                                          shuffle=False, num_workers=NUM_WORKERS, drop_last=False)
 
-if RESUME:
-    ckpt = torch.load(RESUME)
+if opt.resume:
+    ckpt = torch.load(opt.resume)
     net.load_state_dict(ckpt['net_state_dict'])
     start_epoch = ckpt['epoch'] + 1
 
@@ -104,10 +115,19 @@ if multi_gpus:
 
 best_acc = 0.0
 best_epoch = 0
-for epoch in range(start_epoch, TOTAL_EPOCH + 1):
+
+# result = ('%15s' * 4) % (
+#         'epochs', 'train_loss', 'accs', 'thresholds')
+#
+# with open(results_file, 'a') as f:
+#     f.write(result + '\n')  # append metrics, val_loss
+
+# init metric and loss
+train_total_loss, accs, thresholds = 0, 0, 0
+for epoch in range(start_epoch, opt.epochs + 1):
     exp_lr_scheduler.step()
     # train model
-    _print('Train Epoch: {}/{} ...'.format(epoch, TOTAL_EPOCH))
+    _print('Train Epoch: {}/{} ...'.format(epoch, opt.epochs))
     net.train()
 
     train_total_loss = 0.0
@@ -122,7 +142,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
 
         raw_logits = net(img)
         total_loss = loss(raw_logits, label)
-        if len(GPU) != 1:
+        if multi_gpus:
             total_loss = torch.mean(total_loss)
         total_loss.backward()
         optimizer_ft.step()
@@ -138,7 +158,7 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
     _print(loss_msg)
 
     # test model on lfw
-    if epoch % TEST_FREQ == 0:
+    if epoch % opt.test_interval == 0:
         net.eval()
         featureLs = []
         featureRs = []
@@ -156,21 +176,28 @@ for epoch in range(start_epoch, TOTAL_EPOCH + 1):
         # save tmp_result
         # scipy.io.savemat('./result/tmp_result.mat', result)
         accs, thresholds = evaluation_num_fold(result, num=TOTAL_PAIR / INTERVAL)
-        _print('    ave: {:.4f}'.format(np.mean(accs) * 100))
-        _print('    best_threshold: {:.4f}'.format(np.mean(thresholds)))
+        accs = np.mean(accs)
+        thresholds = np.mean(thresholds) 
+        _print('    ave: {:.4f}'.format(accs * 100))
+        _print('    best_threshold: {:.4f}'.format(thresholds))
 
+    result = ('%10s' * 1 + '%10.4g' * 3) % (
+        f'{epoch}/{opt.epochs}', train_total_loss, accs, thresholds)
+
+    with open(results_file, 'a') as f:
+        f.write(result + '\n')  # append metrics, val_loss
     # save model
-    if epoch % SAVE_FREQ == 0:
+    if epoch % opt.save_interval == 0:
         msg = 'Saving checkpoint: {}'.format(epoch)
         _print(msg)
         if multi_gpus:
             net_state_dict = net.module.state_dict()
         else:
             net_state_dict = net.state_dict()
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
         torch.save({
             'epoch': epoch,
             'net_state_dict': net_state_dict},
-            os.path.join(save_dir, '%03d.ckpt' % epoch))
+            os.path.join(weights_dir, '%03d.ckpt' % epoch))
+
+plot_recognition_results(save_dir=save_dir)
 print('finishing training')

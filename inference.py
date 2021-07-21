@@ -10,7 +10,7 @@ from utils.regressor.distance_calculation_arcface import multi_matching
 from model.regressor.create_regressor import create_model
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
-from utils.config import IMAGE_RESOLUTION, CONCAT, FEATURE_DIMS
+from utils.config import IMAGE_RESOLUTION, CONCAT
 import torch
 import cv2
 import random
@@ -23,7 +23,7 @@ import scipy.io
 
 random.seed(0)
 
-REGRESS_THRES = 0.276
+REGRESS_THRES = 0.0
 DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)

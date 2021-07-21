@@ -7,6 +7,22 @@ from torch.nn import init
 #  1.确定shortcut部分bn层的使用；
 #  2.确定激活函数使用；
 
+# CoatNet config
+"""CoAtNet"""
+REPEAT_NUM = {'CoAtNet-0': [2, 2, 3, 5, 2],
+              'CoAtNet-1': [2, 2, 6, 14, 2],
+              'CoAtNet-2': [2, 2, 6, 14, 2],
+              'CoAtNet-3': [2, 2, 6, 14, 2],
+              'CoAtNet-4': [2, 2, 12, 28, 2],
+              }
+
+DIMS = {'CoAtNet-0': [64, 96, 192, 384, 768],
+        'CoAtNet-1': [64, 96, 192, 384, 768],
+        'CoAtNet-2': [128, 128, 256, 512, 1024],
+        'CoAtNet-3': [192, 192, 384, 768, 1536],
+        'CoAtNet-4': [192, 192, 384, 768, 1536],
+        }
+
 
 class StemStage(nn.Module):
     """
