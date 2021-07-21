@@ -4,8 +4,8 @@ from .cgd import CGDModel
 import timm
 from .CoAtNet import CoAtNet, DIMS, REPEAT_NUM
 from .CircleLoss import SparseCircleLoss
-from utils.config import FEATURE_DIMS
-
+from utils.config import FEATURE_DIMS, SWIN_PRETRAIN
+import torch
 
 
 def create_model(name, pretrained, input_size, cgd=False):
@@ -16,9 +16,10 @@ def create_model(name, pretrained, input_size, cgd=False):
         model = timm.create_model('mobilenetv3_large_100', pretrained=pretrained, num_classes=FEATURE_DIMS)
     elif name == 'swin_transformer':
         model = SwinTransformer(img_size=input_size, num_classes=FEATURE_DIMS)
+        if pretrained:
+            model.load_state_dict(torch.load(SWIN_PRETRAIN, map_location='cpu')['model'], strict=False)
     elif name == 'CoATNet':
         model = CoAtNet(input_size, REPEAT_NUM['CoAtNet-0'], DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
-    
     if cgd:
         return CGDModel(model, gd_config='SG', feature_dim=FEATURE_DIMS, num_classes=FEATURE_DIMS)
     else:

@@ -481,10 +481,10 @@ class SwinTransformer(nn.Module):
         use_checkpoint (bool): Whether to use checkpointing to save memory. Default: False
     """
 
-    def __init__(self, img_size=112, patch_size=2, in_chans=3, num_classes=1000,
-                 embed_dim=96, depths=[2, 2, 18, 2], num_heads=[6, 12, 24, 48],
+    def __init__(self, img_size=224, patch_size=4, in_chans=3, num_classes=1000,
+                 embed_dim=96, depths=[2, 2, 18, 2], num_heads=[3, 6, 12, 24],
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
-                 drop_rate=0.5, attn_drop_rate=0.5, drop_path_rate=0.1,
+                 drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
                  use_checkpoint=False, **kwargs):
         super().__init__()
@@ -535,7 +535,8 @@ class SwinTransformer(nn.Module):
 
         self.norm = norm_layer(self.num_features)
         self.avgpool = nn.AdaptiveAvgPool1d(1)
-        self.head = nn.Linear(self.num_features, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = nn.Linear(self.num_features, 1000) if num_classes > 0 else nn.Identity()
+        self.project = nn.Linear(1000, num_classes)
 
         self.apply(self._init_weights)
 
@@ -573,6 +574,8 @@ class SwinTransformer(nn.Module):
     def forward(self, x):
         x = self.forward_features(x)
         x = self.head(x)
+        # x = nn.Linear(1000, 512)(x)
+        x = self.project(x)
         return x
 
     def flops(self):
@@ -586,7 +589,8 @@ class SwinTransformer(nn.Module):
 
 
 if __name__ == '__main__':
-    x = torch.randn(1, 3, 112, 112)
-    model = SwinTransformer(img_size=112, num_classes=256)
+    x = torch.randn(2, 3, 224, 224).cuda()
+    model = SwinTransformer(img_size=224, num_classes=512).cuda()
+    model.load_state_dict(torch.load('./pretrain/swin_small_patch4_window7_224.pth', map_location='cpu')['model'], strict=False)
     output = model(x)
     print(output.shape)

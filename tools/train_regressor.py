@@ -22,20 +22,23 @@ import logging
 import torch.utils.data
 import argparse
 import yaml
+from timm.scheduler.cosine_lr import CosineLRScheduler
+import math
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--backbone', default='mobilenetv3_large_100', help='Backbone')
-parser.add_argument('--loss_head', default='Circleloss', help='Loss head')
 parser.add_argument('--epochs', type=int, default=5, help='Total epochs')
-parser.add_argument('--input-size', type=int, default=112, help='Input Size')
-parser.add_argument('--batch_size', type=int, default=128, help='Batch size')
+parser.add_argument('--input_size', type=int, default=224, help='Input Size')
+parser.add_argument('--batch_size', type=int, default=2, help='Batch size')
 parser.add_argument('--resume', type=str, default='', help='Resume weights path')
 parser.add_argument('--gpu', type=str, default='0, 1', help='GPUs')
-parser.add_argument('--save-dir', type=str, default='./second_match', help='The path to save log and weights')
+parser.add_argument('--save_dir', type=str, default='./second_match', help='The path to save log and weights')
 parser.add_argument('--name', type=str, default='Retail_v2_', help='save to save_dir/name')
-parser.add_argument('--save-interval', type=int, default=1, help='The interval of saving model')
-parser.add_argument('--test-interval', type=int, default=1, help='The interval of testing model')
-parser.add_argument('--use-cgd', action='store_true', default=False, help='Whether to use CGD')
+parser.add_argument('--save_interval', type=int, default=1, help='The interval of saving model')
+parser.add_argument('--test_interval', type=int, default=1, help='The interval of testing model')
+parser.add_argument('--use_cgd', action='store_true', default=False, help='Whether to use CGD')
+parser.add_argument('--backbone', default='swin_transformer', help='Backbone')
+parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
+parser.add_argument('--pretrain', default=True, help='start from pretrain model')
 opt = parser.parse_args()
 print(opt)
 
@@ -60,7 +63,9 @@ os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpu
 
 # other init
 start_epoch = 1
-save_dir = os.path.join(opt.save_dir, opt.name + datetime.now().strftime('%Y%m%d_%H%M%S'))
+save_dir = os.path.join(opt.save_dir, opt.backbone + '_' + opt.loss_head + '_' + str(opt.epochs) + '_' + str(opt.batch_size)
+                        + '_' + str(opt.input_size) + '_' + str(opt.pretrain) + '_' + datetime.now().strftime('%Y%m%d_%H%M%S'))
+
 os.makedirs(save_dir, exist_ok=True)
 
 weights_dir = osp.join(save_dir, 'weights')
@@ -77,14 +82,13 @@ with open(osp.join(save_dir, 'config.yaml'), 'w') as f:
 
 logging = init_log(save_dir)
 _print = logging.info
+_print(opt)
 
 img_size = opt.input_size
 
-net = create_model(name=opt.backbone, pretrained=False, 
-                   input_size=img_size, cgd=opt.use_cgd).cuda()
+net = create_model(name=opt.backbone, pretrained=opt.pretrain, input_size=img_size, cgd=opt.use_cgd).cuda()
 
 loss = create_metric(opt.loss_head).cuda()
-
 
 # define trainloader and testloader
 # img_size = net.get_image_size(model_name)
@@ -106,8 +110,19 @@ if opt.resume:
     start_epoch = ckpt['epoch'] + 1
 
 # define optimizers
-optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
-exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[36, 52, 58], gamma=0.1)
+# optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
+# exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[5, 52, 90], gamma=0.1)
+# optimizer_ft = optim.SGD(params=net.parameters(), lr=5e-4, momentum=0.9, nesterov=True, weight_decay=4e-4)
+optimizer_ft = optim.AdamW(params=net.parameters(), lr=5e-4, eps=1e-8,betas=(0.9, 0.999), weight_decay=0.05)
+exp_lr_scheduler = CosineLRScheduler(optimizer=optimizer_ft,
+                                     t_initial=opt.epochs * len(trainloader),
+                                     t_mul=1.,
+                                     lr_min=5e-6,
+                                     warmup_lr_init=5e-7,
+                                     warmup_t=math.ceil(0.05 * opt.epochs * len(trainloader)),
+                                     cycle_limit=1,
+                                     t_in_epochs=False
+                                     )
 
 if multi_gpus:
     net = DataParallel(net)
@@ -115,7 +130,6 @@ if multi_gpus:
 
 best_acc = 0.0
 best_epoch = 0
-
 # result = ('%15s' * 4) % (
 #         'epochs', 'train_loss', 'accs', 'thresholds')
 #
@@ -124,10 +138,12 @@ best_epoch = 0
 
 # init metric and loss
 train_total_loss, accs, thresholds = 0, 0, 0
+
 for epoch in range(start_epoch, opt.epochs + 1):
-    exp_lr_scheduler.step()
+    exp_lr_scheduler.step(epoch)
     # train model
     _print('Train Epoch: {}/{} ...'.format(epoch, opt.epochs))
+
     net.train()
 
     train_total_loss = 0.0
