@@ -578,6 +578,20 @@ class SwinTransformer(nn.Module):
         x = self.project(x)
         return x
 
+    def forward_cgd(self, x):
+        x = self.patch_embed(x)
+        if self.ape:
+            x = x + self.absolute_pos_embed
+        x = self.pos_drop(x)
+
+        for layer in self.layers:
+            x = layer(x)
+
+        x = self.norm(x)  # B L C
+        # x = self.avgpool(x.transpose(1, 2))  # B C 1
+        # x = torch.flatten(x, 1)
+        return x
+
     def flops(self):
         flops = 0
         flops += self.patch_embed.flops()

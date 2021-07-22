@@ -8,14 +8,15 @@ NUM_THREADS = min(16, os.cpu_count())  # number of multiprocessing threads
 NUM_WORKERS = min(16, os.cpu_count())  # number of torch dataloader cpu workers
 
 FEATURE_DIMS = 512
+CLASS_NUM = 116
 
-IMAGE_RESOLUTION = 112  # the inference input size, same as training input_size mostly
+IMAGE_RESOLUTION = 224  # the inference input size, same as training input_size mostly
 
 """Regressor"""
 
 # Training and testing configs
 
-CONCAT = True  # Whether to concat the prediction results
+CONCAT = False  # Whether to concat the prediction results
 
 
 # train data prepare, crop images
@@ -40,6 +41,7 @@ TOTAL_PAIR = 30000
 INTERVAL = 3000
 
 SWIN_PRETRAIN = osp.join(BASE_DIR, 'model/regressor/pretrain/swin_small_patch4_window7_224.pth')
+
 # augmentation
 AUGMENT_PROBABILITY = {
     'RandomResizedCrop': 0.5,

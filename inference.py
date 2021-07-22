@@ -23,12 +23,12 @@ import scipy.io
 
 random.seed(0)
 
-REGRESS_THRES = 0.0
+REGRESS_THRES = 0.2846
 DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 32
+REGRESS_BATCH_SIZE = 10
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
@@ -37,8 +37,8 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_single.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_99.8333_0.1953.ckpt')
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swintransformer+circleloss_99.9792_0.2760.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/300epoch_swin_cirleloss99.90_0.2846.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/019eopch_efficientb4_circleloss_99.947_0.3195_384×384.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
 TEST_IMAGES_PATH = osp.join(BASE_DIR, 'data/test/a_images')
@@ -62,7 +62,8 @@ def run():
 
     # efficientnet
     # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=FEATURE_DIMS).cuda()
-    regressor = create_model('efficientnet_b4', pretrained=False).cuda()
+    # regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION).cuda()
+    regressor = create_model('swin_transformer', pretrained=False, input_size=IMAGE_RESOLUTION).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
 

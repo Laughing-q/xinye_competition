@@ -27,20 +27,19 @@ import math
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--epochs', type=int, default=5, help='Total epochs')
-parser.add_argument('--input_size', type=int, default=224, help='Input Size')
-parser.add_argument('--batch_size', type=int, default=2, help='Batch size')
+parser.add_argument('--input_size', type=int, default=112, help='Input Size')
+parser.add_argument('--batch_size', type=int, default=32, help='Batch size')
 parser.add_argument('--resume', type=str, default='', help='Resume weights path')
 parser.add_argument('--gpu', type=str, default='0, 1', help='GPUs')
 parser.add_argument('--save_dir', type=str, default='./second_match', help='The path to save log and weights')
 parser.add_argument('--name', type=str, default='Retail_v2_', help='save to save_dir/name')
 parser.add_argument('--save_interval', type=int, default=1, help='The interval of saving model')
 parser.add_argument('--test_interval', type=int, default=1, help='The interval of testing model')
-parser.add_argument('--use_cgd', action='store_true', default=False, help='Whether to use CGD')
-parser.add_argument('--backbone', default='swin_transformer', help='Backbone')
+parser.add_argument('--use_cgd', action='store_true', default=True, help='Whether to use CGD')
+parser.add_argument('--backbone', default='efficientnet_b4', help='Backbone')
 parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
-parser.add_argument('--pretrain', default=True, help='start from pretrain model')
+parser.add_argument('--pretrain', default=False, help='start from pretrain model')
 opt = parser.parse_args()
-print(opt)
 
 
 def init_log(output_dir):
@@ -110,19 +109,19 @@ if opt.resume:
     start_epoch = ckpt['epoch'] + 1
 
 # define optimizers
-# optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
-# exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[5, 52, 90], gamma=0.1)
+optimizer_ft = optim.SGD(params=net.parameters(), lr=0.1, momentum=0.9, nesterov=True, weight_decay=4e-4)
+exp_lr_scheduler = lr_scheduler.MultiStepLR(optimizer_ft, milestones=[5, 52, 90], gamma=0.1)
 # optimizer_ft = optim.SGD(params=net.parameters(), lr=5e-4, momentum=0.9, nesterov=True, weight_decay=4e-4)
-optimizer_ft = optim.AdamW(params=net.parameters(), lr=5e-4, eps=1e-8,betas=(0.9, 0.999), weight_decay=0.05)
-exp_lr_scheduler = CosineLRScheduler(optimizer=optimizer_ft,
-                                     t_initial=opt.epochs * len(trainloader),
-                                     t_mul=1.,
-                                     lr_min=5e-6,
-                                     warmup_lr_init=5e-7,
-                                     warmup_t=math.ceil(0.05 * opt.epochs * len(trainloader)),
-                                     cycle_limit=1,
-                                     t_in_epochs=False
-                                     )
+# optimizer_ft = optim.AdamW(params=net.parameters(), lr=5e-4, eps=1e-8,betas=(0.9, 0.999), weight_decay=0.05)
+# exp_lr_scheduler = CosineLRScheduler(optimizer=optimizer_ft,
+#                                      t_initial=opt.epochs * len(trainloader),
+#                                      t_mul=1.,
+#                                      lr_min=5e-6,
+#                                      warmup_lr_init=5e-7,
+#                                      warmup_t=math.ceil(0.05 * opt.epochs * len(trainloader)),
+#                                      cycle_limit=1,
+#                                      t_in_epochs=False
+#                                      )
 
 if multi_gpus:
     net = DataParallel(net)

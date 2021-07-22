@@ -19,6 +19,8 @@ class SparseCircleLoss(nn.Module):
     def forward(self, input: Tensor, label: Tensor) -> Tensor:
         similarity_matrix = nn.functional.linear(nn.functional.normalize(input, p=2, dim=1, eps=1e-12),
                                                  nn.functional.normalize(self.weight, p=2, dim=1, eps=1e-12))
+        # similarity_matrix = nn.functional.linear(input,
+        #                                          nn.functional.normalize(self.weight, p=2, dim=1, eps=1e-12))
 
         if self.use_cuda:
             one_hot = torch.zeros(similarity_matrix.size(), device='cuda')
