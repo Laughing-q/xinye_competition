@@ -601,6 +601,18 @@ class SwinTransformer(nn.Module):
         flops += self.num_features * self.num_classes
         return flops
 
+swin_config = {
+    "small":{"embed_dim": 96,
+             "depths": [2, 2, 18, 2],
+             "num_heads": [3, 6, 12, 24],},
+    "large":{"embed_dim": 192,
+             "depths": [2, 2, 18, 2],
+             "num_heads": [6, 12, 24, 48],},
+}
+
+def swin_transformer(input_size, num_classes, type='large'):
+    return SwinTransformer(img_size=input_size, num_classes=num_classes, **swin_config[type])
+
 
 if __name__ == '__main__':
     x = torch.randn(2, 3, 224, 224).cuda()

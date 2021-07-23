@@ -23,21 +23,24 @@ import scipy.io
 
 random.seed(0)
 
-REGRESS_THRES = 0.2846
+REGRESS_THRES = 0.0
 DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 10
+REGRESS_BATCH_SIZE = 4
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
 # DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_best.pth')
 # DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_best.yaml')
-DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_single.pth')
-DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
+# DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_single.pth')
+# DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
+DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
+DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/300epoch_swin_cirleloss99.90_0.2846.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/300epoch_swin_cirleloss99.90_0.2846.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/019eopch_efficientb4_circleloss_99.947_0.3195_384×384.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -60,17 +63,11 @@ def run():
                       device='0', img_hw=(640, 640))
     detector.show = False
 
-    # efficientnet
-    # regressor = timm.create_model('efficientnet_b4', pretrained=False, num_classes=FEATURE_DIMS).cuda()
+    # create model
     # regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION).cuda()
     regressor = create_model('swin_transformer', pretrained=False, input_size=IMAGE_RESOLUTION).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
-
-    # swin transformer
-    # regressor = NET['swin_transformer'].cuda()
-    # regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
-    # regressor.eval()
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH,
                                              json_file=RETRIEVAL_JSON_PATH,
@@ -92,7 +89,10 @@ def run():
     annotation = []
 
     img_paths = glob.glob(osp.join(TEST_IMAGES_PATH, '*'))
-    for path in tqdm.tqdm(img_paths, total=len(img_paths)):
+    pbar = tqdm.tqdm(img_paths, total=len(img_paths))
+    for path in pbar:
+        pbar.desc = f"{path}"
+        # pbar.set_description(f"{path}")
         img = cv2.imread(path)
         file_name = osp.basename(path)
 

@@ -95,12 +95,13 @@ class Yolov5:
                     img.shape[2:], det[:, :4], img0s[i].shape).round()
                 for di, (*xyxy, conf, cls) in enumerate(reversed(det)):
                     # label = '%s %.2f' % (self.names[int(cls)], conf)
-                    label = '%s' % (self.names[int(cls)])
+                    # label = '%s' % (self.names[int(cls)])
+                    label = '%.2f' % (conf)
                     # xyxy = [int(i) for i in xyxy]
                     # im0[xyxy[1]:xyxy[3], xyxy[0]:xyxy[2], :] = 114
                     # if not self.names[int(cls)] in ['uniform', 'no-uniform']:
                     if self.show:
-                        plot_one_box(xyxy, img0s[i], label=None,
+                        plot_one_box(xyxy, img0s[i], label=label,
                                      color=self.colors[int(cls)], 
                                      line_thickness=2)
 

@@ -16,7 +16,7 @@ IMAGE_RESOLUTION = 224  # the inference input size, same as training input_size 
 
 # Training and testing configs
 
-CONCAT = False  # Whether to concat the prediction results
+CONCAT = True  # Whether to concat the prediction results
 
 
 # train data prepare, crop images

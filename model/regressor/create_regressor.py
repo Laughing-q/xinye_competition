@@ -1,5 +1,6 @@
 from .arcface import ArcMarginProduct
-from .swin_transformer import SwinTransformer
+# from .swin_transformer import SwinTransformer
+from .swin_transformer import swin_transformer
 from .cgd import CGDModel
 import timm
 from .CoAtNet import CoAtNet, DIMS, REPEAT_NUM
@@ -18,7 +19,7 @@ def create_model(name, pretrained, input_size, cgd=False):
         model = timm.create_model('mobilenetv3_large_100', 
                                   pretrained=pretrained, num_classes=FEATURE_DIMS)
     elif name == 'swin_transformer':
-        model = SwinTransformer(img_size=input_size, num_classes=FEATURE_DIMS)
+        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS)
         flag = 'swin'
         if pretrained:
             model.load_state_dict(torch.load(SWIN_PRETRAIN, map_location='cpu')['model'], strict=False)
