@@ -19,7 +19,7 @@ def create_model(name, pretrained, input_size, cgd=False):
         model = timm.create_model('mobilenetv3_large_100', 
                                   pretrained=pretrained, num_classes=FEATURE_DIMS)
     elif name == 'swin_transformer':
-        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS)
+        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS, type='large')
         flag = 'swin'
         if pretrained:
             model.load_state_dict(torch.load(SWIN_PRETRAIN, map_location='cpu')['model'], strict=False)

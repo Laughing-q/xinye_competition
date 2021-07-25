@@ -42,12 +42,14 @@ retail for detector training.
 - [x] more feature dims(cancel the feature concat)
 - [x] more augmentation
 - [ ] add auxiliary class loss 
-- [ ] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
+- [x] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
+- [ ] EMA
 - [ ] [CoAtNet](https://arxiv.org/pdf/2106.04803v1.pdf)
 - [ ] [VOLO](https://arxiv.org/pdf/2106.13112v2.pdf)
 
 ### Detector
-- [ ] train retail as single class
+- [x] train retail as single class
+- [x] more dataset
 - [ ] more powerful detector
 
 
