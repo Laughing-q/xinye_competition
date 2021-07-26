@@ -4,7 +4,7 @@ BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
 from utils.config import TRAIN_SAVE_DIR, PAIR_PATH, \
     TOTAL_PAIR, INTERVAL, CONCAT, AUGMENT_PROBABILITY, NUM_WORKERS, save_args
-from model.regressor.create_regressor import create_model, create_metric
+from model.regressor.create_regressor import create_model, create_metric, ModelEMA
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
 from utils.regressor.plots import plot_recognition_results
@@ -35,10 +35,11 @@ parser.add_argument('--save_dir', type=str, default='./second_match', help='The 
 parser.add_argument('--name', type=str, default='Retail_v2_', help='save to save_dir/name')
 parser.add_argument('--save_interval', type=int, default=1, help='The interval of saving model')
 parser.add_argument('--test_interval', type=int, default=1, help='The interval of testing model')
-parser.add_argument('--use_cgd', action='store_true', default=True, help='Whether to use CGD')
+parser.add_argument('--use_cgd', action='store_true', default=False, help='Whether to use CGD')
 parser.add_argument('--backbone', default='efficientnet_b4', help='Backbone')
 parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
 parser.add_argument('--pretrain', default=False, help='start from pretrain model')
+parser.add_argument('--ema', action='store_true', default=True, help='Exponential Moving Average')
 opt = parser.parse_args()
 
 
@@ -86,6 +87,8 @@ _print(opt)
 img_size = opt.input_size
 
 net = create_model(name=opt.backbone, pretrained=opt.pretrain, input_size=img_size, cgd=opt.use_cgd).cuda()
+if opt.ema:
+    ema = ModelEMA(net)
 
 loss = create_metric(opt.loss_head).cuda()
 
@@ -161,6 +164,8 @@ for epoch in range(start_epoch, opt.epochs + 1):
             total_loss = torch.mean(total_loss)
         total_loss.backward()
         optimizer_ft.step()
+        if opt.ema:
+            ema.update(net)
 
         train_total_loss += total_loss.item() * batch_size
         total += batch_size
@@ -181,7 +186,10 @@ for epoch in range(start_epoch, opt.epochs + 1):
         for data in tqdm(testloader):
             for i in range(len(data)):
                 data[i] = data[i].cuda()
-            features = [test_inference(d, net, concat=CONCAT).numpy() for d in data]
+            if opt.ema:
+                features = [test_inference(d, ema.ema, concat=CONCAT).numpy() for d in data]
+            else:
+                features = [test_inference(d, net, concat=CONCAT).numpy() for d in data]
             featureLs.append(features[0])
             featureRs.append(features[1])
         featureLs = np.concatenate(featureLs, axis=0)
@@ -211,7 +219,8 @@ for epoch in range(start_epoch, opt.epochs + 1):
             net_state_dict = net.state_dict()
         torch.save({
             'epoch': epoch,
-            'net_state_dict': net_state_dict},
+            # 'net_state_dict': net_state_dict,
+            'ema': ema.ema.state_dict(), },
             os.path.join(weights_dir, '%03d.ckpt' % epoch))
 
 plot_recognition_results(save_dir=save_dir)

@@ -89,7 +89,8 @@ def evaluation_num_fold(result, num=20):
     ACCs = np.zeros(num)
     Thres = np.zeros(num)
     # result = scipy.io.loadmat(root)  # 加载.mat文件
-    with Pool(NUM_THREADS) as p:
+    # with Pool(NUM_THREADS) as p:
+    with Pool() as p:
         pbar = tqdm(p.imap(evaluation_one_fold, [(result, i) for i in range(num)]), total=num)
         for i, (accs, thres) in enumerate(pbar):
             ACCs[i] = accs

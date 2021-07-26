@@ -101,7 +101,7 @@ def run():
                                         conf_threshold=DETECT_THRES,
                                         iou_threshold=IOU_THRES,
                                         agnostic=True,
-                                        wbf=True)
+                                        wbf=False)
 
         for det in preds:
             if det is None or len(det) == 0:

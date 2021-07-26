@@ -37,8 +37,8 @@ PAIR_PATH = osp.join(BASE_DIR, 'data/pair.txt')
 
 # test pair config
 SIM_RATIO = 0.5
-TOTAL_PAIR = 50000
-INTERVAL = 5000
+TOTAL_PAIR = 30000
+INTERVAL = 3000
 
 SWIN_PRETRAIN = osp.join(BASE_DIR, 'model/regressor/pretrain/swin_small_patch4_window7_224.pth')
 
