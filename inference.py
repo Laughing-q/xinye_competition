@@ -28,7 +28,7 @@ DETECT_THRES = 0.001
 IOU_THRES = 0.4
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 4
+REGRESS_BATCH_SIZE = 8
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
@@ -39,7 +39,8 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cdg_epoch034_99.9967.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/019eopch_efficientb4_circleloss_99.947_0.3195_384×384.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -63,7 +64,7 @@ def run():
     detector.show = False
 
     # create model
-    # regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION, cgd=True).cuda()
+    # regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION, cgd=False).cuda()
     regressor = create_model('swin_transformer', pretrained=False, input_size=IMAGE_RESOLUTION, cgd=True).cuda()
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
@@ -99,7 +100,8 @@ def run():
         preds = detector.dynamic_detect(img, [img_raw],
                                         conf_threshold=DETECT_THRES,
                                         iou_threshold=IOU_THRES,
-                                        agnostic=True)
+                                        agnostic=True,
+                                        wbf=True)
 
         for det in preds:
             if det is None or len(det) == 0:

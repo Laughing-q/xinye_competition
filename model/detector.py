@@ -1,6 +1,7 @@
 from utils.torch_utils import select_device, load_classifier, time_synchronized, time_synchronized
 from model.yolo import Model
 from utils.datasets import LoadStreams, LoadImages, letterbox
+from utils.ensemble_boxes_wbf import weighted_boxes_fusion
 from utils.plots import plot_one_box
 from utils.general import non_max_suppression, scale_coords
 
@@ -60,7 +61,7 @@ class Yolov5:
         img = np.ascontiguousarray(img)
         return img, img0
 
-    def dynamic_detect(self, image, img0s, classes=None, conf_threshold=0.6, iou_threshold=0.4, agnostic=False):
+    def dynamic_detect(self, image, img0s, classes=None, conf_threshold=0.6, iou_threshold=0.4, agnostic=False, wbf=False):
         """
         Detect images by yolov5.
 
@@ -84,8 +85,9 @@ class Yolov5:
         # print(img.shape)
         torch.cuda.synchronize()
         pred = self.model(img)[0] 
-        pred = non_max_suppression(
-            pred, conf_threshold, iou_threshold, classes=classes, agnostic=agnostic)
+        pred = non_max_suppression(pred, conf_threshold, iou_threshold, 
+                                   classes=classes, agnostic=agnostic, 
+                                   wbf=wbf, img_size=img.shape[2:])
 
         torch.cuda.synchronize()
         for i, det in enumerate(pred):  # detections per image

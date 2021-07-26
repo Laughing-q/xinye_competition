@@ -604,10 +604,16 @@ class SwinTransformer(nn.Module):
 swin_config = {
     "small":{"embed_dim": 96,
              "depths": [2, 2, 18, 2],
-             "num_heads": [3, 6, 12, 24],},
+             "num_heads": [3, 6, 12, 24],
+             "window_size": 7, },
     "large":{"embed_dim": 192,
              "depths": [2, 2, 18, 2],
-             "num_heads": [6, 12, 24, 48],},
+             "num_heads": [6, 12, 24, 48],
+             "window_size": 7, },
+    "large_384":{"embed_dim": 192,
+             "depths": [2, 2, 18, 2],
+             "num_heads": [6, 12, 24, 48],
+             "window_size": 12, },
 }
 
 def swin_transformer(input_size, num_classes, type='large'):

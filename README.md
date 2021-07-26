@@ -44,12 +44,14 @@ retail for detector training.
 - [ ] add auxiliary class loss 
 - [x] [CGD](https://arxiv.org/pdf/1903.10663v4.pdf)
 - [ ] EMA
+- [ ] TTA
 - [ ] [CoAtNet](https://arxiv.org/pdf/2106.04803v1.pdf)
 - [ ] [VOLO](https://arxiv.org/pdf/2106.13112v2.pdf)
 
 ### Detector
 - [x] train retail as single class
 - [x] more dataset
+- [ ] WBF
 - [ ] more powerful detector
 
 

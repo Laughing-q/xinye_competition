@@ -45,6 +45,17 @@
 | yolov5x_PRC | swin_small_cgd_epoch118_99.92.ckpt    | 0.001      | 0.4       | 0.0        | 224        | True   | 512         | 0.894241 | 更换了训练策略，学习率的small模型，对比之前的small模型, 本意为使用cgd，但是未开启 | 指标略微上升                |
 
 
+| Detector    | Regressor                             | conf thres | iou thres | score thre | input size | concat | feature dim | result   | notes                                                  | analysis                    |
+|-------------|---------------------------------------|------------|-----------|------------|------------|--------|-------------|----------|--------------------------------------------------------|-----------------------------|
+| yolov5x_PRC | swin_large_cdg_epoch034_99.9967.ckpt | 0.001        | 0.4       | 0.0        | 224        | True   | 512         | 0.915495 | swin large+cgd                                         | 指标下降 |
+| yolov5x_PRC | swin_small_cgd_epoch040._9.9633.ckpt | 0.001        | 0.4       | 0.0        | 224        | True   | 512         | 0.89661 | swin small+cgd                                         | 比不加cgd的small模型指标有上升 |
+| yolov5x_PRC | siwn_large_cgd_epoch049_99.99.ckpt | 0.001        | 0.4       | 0.0        | 224        | True   | 512         | 0.916085 | swin large+cgd更换一个epoch的模型                                         | 指标微微提升 |
+| yolov5x_PRC | swin_large_384_cgd_epoch038_99.92.ckpt | 0.001        | 0.4       | 0.0        | 384        | False   | 512         | 0.818517 | swin large+cgd + 384, 由于384会超时，所以去掉concat再增加batchsize才出结果                                         | 指标明显下降，可以放弃384了，之前eff+384也有精度下降 |
+| yolov5x_PRC | siwn_large_cgd_epoch049_99.99.ckpt | 0.001        | 0.4       | 0.0        | 224        | True   | 512         | 0.915879 | 对图片进行上下翻转，左右翻转，上下左右翻转再拼接为2048维度的预测                                        | 指标微微下降，说明一味的 进行翻转再concat也不一定会提高指标，之后可以试一下使用均值 |
+
+
+
+
 ## 初赛
 yolov5s+model1, detect_conf=0.3, iou=0.4, regress_score=0.43: 0.58514;
 

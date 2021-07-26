@@ -40,6 +40,17 @@ def get_features(imgs, net, concat=True):
         res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
         res = res.view(-1, sub_dim * 2)  # (N, 256)
         features = res.data.cpu()  # .numpy()
+        # imgs = torch.cat([imgs, 
+        #                   imgs.flip(dims=[-1]), 
+        #                   imgs.flip(dims=[-2]),
+        #                   imgs.flip(dims=[-1, -2])], dim=0)  # (2N, C, H, W)
+        # res = net(imgs)  # (2N, 128)
+        # sub_dim = res.shape[-1]
+        # res = torch.split(res, res.shape[0] // 4, dim=0)  # ((N, 128), (N, 128))
+        # res = torch.stack(res, dim=0)  # (2, N, 128)
+        # res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
+        # res = res.view(-1, sub_dim * 4)  # (N, 256)
+        # features = res.data.cpu()  # .numpy()
     else:
         res = net(imgs)  # (N, features_dim)
         features = res.data.cpu()  # .numpy()
