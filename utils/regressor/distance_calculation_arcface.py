@@ -148,7 +148,7 @@ def multi_matching(img, database, category, net, batch_size=20, concat=True, mea
     best_similarity, index = torch.max(similarity, dim=0)
     result_categories = category[index]
 
-    return result_categories, best_similarity.round(5)
+    return result_categories, best_similarity
 
 
 def test_inference(imgs, net, concat=True, mean=False):
