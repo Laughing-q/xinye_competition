@@ -20,7 +20,7 @@ import timm
 import math
 
 
-def getFeatureFromTorch(net, test_dataset, batch_size=1, concat=True):
+def getFeatureFromTorch(net, test_dataset, batch_size=1, concat=True, mean=False):
     """获得特征向量"""
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=8, drop_last=False)
 
@@ -29,7 +29,7 @@ def getFeatureFromTorch(net, test_dataset, batch_size=1, concat=True):
     count = 0
     for imgs, targets in tqdm(test_loader):
         imgs = imgs.cuda()
-        features = multi_image2embedding(imgs, net, concat=concat)
+        features = multi_image2embedding(imgs, net, concat=concat, mean=mean)
         Features.append(features)
         ItermClass.append(targets)
 

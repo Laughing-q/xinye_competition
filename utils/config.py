@@ -8,7 +8,7 @@ NUM_THREADS = min(16, os.cpu_count())  # number of multiprocessing threads
 NUM_WORKERS = min(16, os.cpu_count())  # number of torch dataloader cpu workers
 
 FEATURE_DIMS = 512
-CLASS_NUM = 116
+CLASS_NUM = 111
 
 IMAGE_RESOLUTION = 224  # the inference input size, same as training input_size mostly
 
@@ -17,6 +17,7 @@ IMAGE_RESOLUTION = 224  # the inference input size, same as training input_size 
 # Training and testing configs
 
 CONCAT = True  # Whether to concat the prediction results
+MEAN = False  # Whether to get the mean of prediction results
 
 
 # train data prepare, crop images

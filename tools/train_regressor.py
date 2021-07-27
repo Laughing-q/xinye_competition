@@ -3,7 +3,7 @@ import sys
 BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 sys.path.insert(0, BASE_DIR)
 from utils.config import TRAIN_SAVE_DIR, PAIR_PATH, \
-    TOTAL_PAIR, INTERVAL, CONCAT, AUGMENT_PROBABILITY, NUM_WORKERS, save_args
+    TOTAL_PAIR, INTERVAL, CONCAT, AUGMENT_PROBABILITY, NUM_WORKERS, save_args, MEAN
 from model.regressor.create_regressor import create_model, create_metric, ModelEMA
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.regressor.retail_dataset import RetailTrain, RetailTest, parseList
@@ -187,9 +187,9 @@ for epoch in range(start_epoch, opt.epochs + 1):
             for i in range(len(data)):
                 data[i] = data[i].cuda()
             if opt.ema:
-                features = [test_inference(d, ema.ema, concat=CONCAT).numpy() for d in data]
+                features = [test_inference(d, ema.ema, concat=CONCAT, mean=MEAN).numpy() for d in data]
             else:
-                features = [test_inference(d, net, concat=CONCAT).numpy() for d in data]
+                features = [test_inference(d, net, concat=CONCAT, mean=MEAN).numpy() for d in data]
             featureLs.append(features[0])
             featureRs.append(features[1])
         featureLs = np.concatenate(featureLs, axis=0)

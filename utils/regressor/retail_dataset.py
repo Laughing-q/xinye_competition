@@ -212,7 +212,8 @@ class RetailTrain(object):
         self.img_size = img_size
 
         self.image_list = glob.glob(osp.join(self.root, '*/*'))
-        self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
+        # self.label_list = [int(osp.basename(im).split('_')[0]) for im in self.image_list]
+        self.label_list = [int(im.split(os.sep)[-2]) for im in self.image_list]
         self.class_nums = len(glob.glob(osp.join(self.root, '*')))
         # torchvision style
         # self.transformer = transforms.Compose([

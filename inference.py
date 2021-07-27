@@ -10,7 +10,7 @@ from utils.regressor.distance_calculation_arcface import multi_matching
 from model.regressor.create_regressor import create_model
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
-from utils.config import IMAGE_RESOLUTION, CONCAT
+from utils.config import IMAGE_RESOLUTION, CONCAT, MEAN
 import torch
 import cv2
 import random
@@ -25,10 +25,10 @@ random.seed(0)
 
 REGRESS_THRES = 0.0
 DETECT_THRES = 0.001
-IOU_THRES = 0.4
+IOU_THRES = 0.5
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 8
+REGRESS_BATCH_SIZE = 16
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
@@ -39,9 +39,9 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cdg_epoch055_91.55.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/019eopch_efficientb4_circleloss_99.947_0.3195_384×384.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
 TEST_IMAGES_PATH = osp.join(BASE_DIR, 'data/test/a_images')
@@ -52,12 +52,11 @@ TEST_JSON_PATH = osp.join(BASE_DIR, 'data/test/a_annotations.json')
 RETRIEVAL_IMAGE_PATH = osp.join(BASE_DIR, 'data/test/b_images')
 RETRIEVAL_JSON_PATH = osp.join(BASE_DIR, 'data/test/b_annotations.json')
 
-
-# RETRIEVAL_IMAGE_PATH = "/d/competition/retail/Preliminaries/test/b_images"
-# RETRIEVAL_JSON_PATH = '/d/competition/retail/Preliminaries/test/b_annotations.json'
-
+# PIC_SAVE_PATH = './submit/normal+min'
+# os.makedirs(PIC_SAVE_PATH, exist_ok=True)
 
 def run():
+    # total_boxes = 0
     detector = Yolov5(weight_path=DETECTOR_WEIGHT_PATH,
                       cfg=DETECTOR_CFG_PATH,
                       device='0', img_hw=(640, 640))
@@ -102,7 +101,8 @@ def run():
                                         iou_threshold=IOU_THRES,
                                         agnostic=True,
                                         wbf=False)
-
+        # total_boxes += len(preds[0])
+        # cv2.putText(img_raw, f"{len(preds[0])}", (10, 60), 0, 2, [225, 255, 255], thickness=2, lineType=cv2.LINE_AA)
         for det in preds:
             if det is None or len(det) == 0:
                 continue
@@ -118,7 +118,8 @@ def run():
                                                 category=category_base,
                                                 net=regressor,
                                                 batch_size=REGRESS_BATCH_SIZE,
-                                                concat=CONCAT)
+                                                concat=CONCAT,
+                                                mean=MEAN)
             detect_confs = det[:, 4]
             det_boxes = det[:, :4]
             boxes = xyxy2xywh(det_boxes)
@@ -138,7 +139,14 @@ def run():
     test_json['annotations'] = annotation
     with open(RESULT_SAVE_PATH, 'w') as fw:
         json.dump(test_json, fw, indent=4)
-
+    # print(total_boxes)
+"""
+torch_nms+0.5: 52199
+torchvision+0.5: 52579, 50805
+torch_nms+Min+0.5: 47892
+torch_nms+Min+0.85: 51157
+torchvision+0.5+Min+0.85: 49424
+"""
 
 if __name__ == "__main__":
     # print(osp.join(BASE_DIR, '*'))

@@ -9,7 +9,7 @@ from utils.regressor.retail_dataset import RetailTest, parseList
 from utils.regressor.distance_calculation_arcface import test_inference
 from utils.regressor.retail_eval import evaluation_num_fold
 from utils.config import IMAGE_RESOLUTION, CONCAT, PAIR_PATH, NUM_WORKERS, \
-    TOTAL_PAIR, INTERVAL
+    TOTAL_PAIR, INTERVAL, MEAN
 import torch
 import numpy as np
 import os.path as osp
@@ -37,7 +37,7 @@ if __name__ == "__main__":
     for data in tqdm(testloader):
         for i in range(len(data)):
             data[i] = data[i].cuda()
-        features = [test_inference(d, regressor, concat=CONCAT).numpy() for d in data]
+        features = [test_inference(d, regressor, concat=CONCAT, mean=MEAN).numpy() for d in data]
         featureLs.append(features[0])
         featureRs.append(features[1])
     featureLs = np.concatenate(featureLs, axis=0)

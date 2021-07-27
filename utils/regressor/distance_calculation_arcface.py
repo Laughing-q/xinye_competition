@@ -23,7 +23,7 @@ def imgflip(imgs):
 
     return imgs
 
-def get_features(imgs, net, concat=True):
+def get_features(imgs, net, concat=True, mean=True):
     """Two style of inference
 
     Args:
@@ -31,6 +31,8 @@ def get_features(imgs, net, concat=True):
         net (torch.Moduel): model
         concat (bool): Whether to concat features
     """
+    if concat and mean:
+        raise ValueError(f"`concat` and `mean` are mutually exclusive.")
     if concat:
         imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
         res = net(imgs)  # (2N, 128)
@@ -51,13 +53,22 @@ def get_features(imgs, net, concat=True):
         # res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
         # res = res.view(-1, sub_dim * 4)  # (N, 256)
         # features = res.data.cpu()  # .numpy()
+    elif mean:
+        imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
+        res = net(imgs)  # (2N, 128)
+        sub_dim = res.shape[-1]
+        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
+        res = torch.stack(res, dim=0)  # (2, N, 128)
+        res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
+        res = torch.mean(res, dim=-2).view(-1, sub_dim)
+        features = res.data.cpu()  # .numpy()
     else:
         res = net(imgs)  # (N, features_dim)
         features = res.data.cpu()  # .numpy()
     return features
 
 
-def multi_image2embedding(imgs, net, batch_size=None, concat=True):
+def multi_image2embedding(imgs, net, batch_size=None, concat=True, mean=False):
     """Inference for a end-to-end pipeline.
 
     Args:
@@ -87,19 +98,19 @@ def multi_image2embedding(imgs, net, batch_size=None, concat=True):
             sub_imgs = sub_imgs.cuda().float()
             sub_imgs = (sub_imgs - 127.5) / 128.
             sub_imgs = sub_imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-            sub_features = get_features(sub_imgs, net, concat=concat)
+            sub_features = get_features(sub_imgs, net, concat=concat, mean=mean)
             features.append(sub_features)
         features = torch.cat(features, dim=0)
     else:
         imgs = imgs.cuda().float()
         imgs = (imgs - 127.5) / 128.
         imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-        features = get_features(imgs, net, concat=concat)
+        features = get_features(imgs, net, concat=concat, mean=mean)
 
     return features
 
 
-def multi_matching(img, database, category, net, batch_size=20, concat=True):
+def multi_matching(img, database, category, net, batch_size=20, concat=True, mean=False):
     """Match the inference results.
 
     Args:
@@ -109,7 +120,7 @@ def multi_matching(img, database, category, net, batch_size=20, concat=True):
         net (Model): The regression model.
         batch_size (int): batch size.
     """
-    features = multi_image2embedding(img, net, batch_size, concat=concat)  # (N, 256)
+    features = multi_image2embedding(img, net, batch_size, concat=concat, mean=mean)  # (N, 256)
 
     features_normalized = F.normalize(features)
     database_normalized = F.normalize(database)
@@ -129,7 +140,7 @@ def multi_matching(img, database, category, net, batch_size=20, concat=True):
     return result_categories, best_similarity.round(5)
 
 
-def test_inference(imgs, net, concat=True):
+def test_inference(imgs, net, concat=True, mean=False):
     """ Inference for eval.
 
     Args:
@@ -154,7 +165,7 @@ def test_inference(imgs, net, concat=True):
     imgs = imgs.cuda().float()
     # imgs = (imgs - 127.5) / 128.
     # imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
-    features = get_features(imgs, net, concat=concat)
+    features = get_features(imgs, net, concat=concat, mean=mean)
 
     return features
 

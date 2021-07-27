@@ -497,8 +497,10 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
         else:
             # Batched NMS
             c = x[:, 5:6] * (0 if agnostic else max_wh)  # classes
-            boxes, scores = x[:, :4] + c, x[:, 4]  # boxes (offset by class), scores
+            boxes, scores, cls = x[:, :4] + c, x[:, 4], x[:, 5]  # boxes (offset by class), scores
             i = torchvision.ops.nms(boxes, scores, iou_thres)  # NMS
+            # boxes, scores, cls = boxes[i], scores[i], cls[i]
+            # i = torch_nms(boxes, scores, 0.85, method='Min')  # NMS
             if i.shape[0] > max_det:  # limit detections
                 i = i[:max_det]
             if merge and (1 < n < 3E3):  # Merge NMS (boxes merged using weighted mean)
@@ -510,6 +512,7 @@ def non_max_suppression(prediction, conf_thres=0.25, iou_thres=0.45, classes=Non
                     i = i[iou.sum(1) > 1]  # require redundancy
 
             output[xi] = x[i]
+            # output[xi] = torch.cat([boxes[i], scores[i][:, None], cls[i][:, None]], dim=-1)
         if (time.time() - t) > time_limit:
             print(f'WARNING: NMS time limit {time_limit}s exceeded')
             break  # time limit exceeded
@@ -610,3 +613,63 @@ def increment_path(path, exist_ok=True, sep=''):
         i = [int(m.groups()[0]) for m in matches if m]  # indices
         n = max(i) + 1 if i else 2  # increment number
         return f"{path}{sep}{n}"  # update path
+
+
+def torch_nms(boxes, scores, threshold, method=None, agnostic=False):
+    """
+    :param boxes: numpy(N, 4), xyxy
+    :param scores: numpy(N, )
+    :param class_id: numpy(N, )
+    :param threshold: float
+    :param method:
+    :return: kept boxed index
+    """
+    if boxes.size == 0:
+        return torch.empty((0,), dtype=torch.long)
+    max_wh = 4096
+    if len(boxes.shape) == 1:
+        boxes = boxes[None, :]
+    assert boxes.shape[1] >= 4, f'bbox shape is not right'
+    # if len(class_id.shape) == 1:
+    #     class_id = class_id[:, None]
+
+    # assert boxes.shape[0] == class_id.shape[0] == scores.shape[0], f'boxes, class_id and scores shapes must be equal'
+
+    # c = class_id * (0 if agnostic else max_wh)
+    # boxes = boxes + c
+    x1 = boxes[:, 0].clone()
+    y1 = boxes[:, 1].clone()
+    x2 = boxes[:, 2].clone()
+    y2 = boxes[:, 3].clone()
+
+    s = scores
+    area = (x2 - x1 + 1) * (y2 - y1 + 1)
+
+    I = torch.argsort(s)  # 从小到大排序索引
+    pick = torch.zeros_like(s, dtype=torch.long)
+    counter = 0
+    while len(I) > 0:
+        i = I[-1]
+        pick[counter] = i
+        counter += 1
+        idx = I[0:-1]
+
+        xx1 = torch.maximum(x1[i], x1[idx]).clone()
+        yy1 = torch.maximum(y1[i], y1[idx]).clone()
+        xx2 = torch.minimum(x2[i], x2[idx]).clone()
+        yy2 = torch.minimum(y2[i], y2[idx]).clone()
+
+        w = torch.maximum(torch.tensor(0.0, device=boxes.device), xx2 - xx1 + 1)
+        h = torch.maximum(torch.tensor(0.0, device=boxes.device), yy2 - yy1 + 1)
+        # w = (xx2 - xx1 + 1).clone()
+        # h = (yy2 - yy1 + 1).clone()
+
+        inter = w * h
+        if method is 'Min':
+            o = inter / torch.minimum(area[i], area[idx])
+        else:
+            o = inter / (area[i] + area[idx] - inter)
+        I = I[torch.where(o <= threshold)]
+
+    pick = pick[:counter].clone()
+    return pick
