@@ -12,7 +12,7 @@ from copy import deepcopy
 import math
 
 
-def create_model(name, pretrained, input_size, cgd=False):
+def create_model(name, pretrained, input_size, cgd=False, swin_type='large'):
     flag = 'conv'
     if name == 'efficientnet_b4':
         model = timm.create_model('efficientnet_b4', 
@@ -22,7 +22,7 @@ def create_model(name, pretrained, input_size, cgd=False):
         model = timm.create_model('mobilenetv3_large_100', 
                                   pretrained=pretrained, num_classes=FEATURE_DIMS)
     elif name == 'swin_transformer':
-        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS, type='large')
+        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS, type=swin_type)
         flag = 'swin'
         if pretrained:
             model.load_state_dict(torch.load(SWIN_PRETRAIN, map_location='cpu')['model'], strict=False)
