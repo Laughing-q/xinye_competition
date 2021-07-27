@@ -23,6 +23,22 @@ def imgflip(imgs):
 
     return imgs
 
+def features_postprocess(net, imgs, mode='concat'):
+    if mode not in ['concat', 'mean']:
+        raise ValueError(f"`mode` should be concat or mean, but got {mode}")
+    res = net(imgs)  # (2N, 128)
+    sub_dim = res.shape[-1]
+    res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
+    res = torch.stack(res, dim=0)  # (2, N, 128)
+    res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
+    if mode == 'concat':
+        res = res.view(-1, sub_dim * 2)  # (N, 256)
+    else:
+        res = torch.mean(res, dim=-2).view(-1, sub_dim)
+    features = res.data.cpu()  # .numpy()
+    return features
+
+
 def get_features(imgs, net, concat=True, mean=True):
     """Two style of inference
 
@@ -35,13 +51,10 @@ def get_features(imgs, net, concat=True, mean=True):
         raise ValueError(f"`concat` and `mean` are mutually exclusive.")
     if concat:
         imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
-        res = net(imgs)  # (2N, 128)
-        sub_dim = res.shape[-1]
-        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
-        res = torch.stack(res, dim=0)  # (2, N, 128)
-        res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
-        res = res.view(-1, sub_dim * 2)  # (N, 256)
-        features = res.data.cpu()  # .numpy()
+        if isinstance(net, list):
+            features = torch.mean(torch.stack([features_postprocess(sub_net, imgs, mode='concat') for sub_net in net], dim=0), dim=0)
+        else:
+            features = features_postprocess(net, imgs, mode='mean')
         # imgs = torch.cat([imgs, 
         #                   imgs.flip(dims=[-1]), 
         #                   imgs.flip(dims=[-2]),
@@ -55,13 +68,10 @@ def get_features(imgs, net, concat=True, mean=True):
         # features = res.data.cpu()  # .numpy()
     elif mean:
         imgs = torch.cat([imgs, imgs.flip(dims=[-1])], dim=0)  # (2N, C, H, W)
-        res = net(imgs)  # (2N, 128)
-        sub_dim = res.shape[-1]
-        res = torch.split(res, res.shape[0] // 2, dim=0)  # ((N, 128), (N, 128))
-        res = torch.stack(res, dim=0)  # (2, N, 128)
-        res = res.permute(1, 0, 2).contiguous()  # (N, 2, 128)
-        res = torch.mean(res, dim=-2).view(-1, sub_dim)
-        features = res.data.cpu()  # .numpy()
+        if isinstance(net, list):
+            features = torch.mean(torch.stack([features_postprocess(sub_net, imgs, mode='mean') for sub_net in net], dim=0), dim=0)
+        else:
+            features = features_postprocess(net, imgs, mode='mean')
     else:
         res = net(imgs)  # (N, features_dim)
         features = res.data.cpu()  # .numpy()

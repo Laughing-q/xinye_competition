@@ -40,7 +40,8 @@ DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cdg_epoch055_91.55.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+REGRESS_WEIGHT_PATH_ = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -68,11 +69,15 @@ def run():
     regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
     regressor.eval()
 
+    regressor_ = create_model('swin_transformer', pretrained=False, input_size=IMAGE_RESOLUTION, cgd=False).cuda()
+    regressor_.load_state_dict(torch.load(REGRESS_WEIGHT_PATH_)['net_state_dict'])
+    regressor_.eval()
+
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH,
                                              json_file=RETRIEVAL_JSON_PATH,
                                              img_size=IMAGE_RESOLUTION)
 
-    mat = retail_eval.getFeatureFromTorch(regressor, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    mat = retail_eval.getFeatureFromTorch([regressor, regressor_], test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
     database = mat['feature']
     category_base = mat['class']
 
@@ -116,7 +121,8 @@ def run():
             categories, scores = multi_matching(img=total_goods,
                                                 database=database,
                                                 category=category_base,
-                                                net=regressor,
+                                                # net=regressor,
+                                                net=[regressor, regressor_],
                                                 batch_size=REGRESS_BATCH_SIZE,
                                                 concat=CONCAT,
                                                 mean=MEAN)
