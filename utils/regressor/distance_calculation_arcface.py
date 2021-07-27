@@ -135,7 +135,7 @@ def multi_matching(img, database, category, net, batch_size=20, concat=True, mea
     features_normalized = F.normalize(features)
     database_normalized = F.normalize(database)
     cosine = F.linear(features_normalized, database_normalized)
-    similarity = cosine.permute(1, 0).contiguous().numpy()
+    similarity = cosine.permute(1, 0).contiguous()  # .numpy()
 
     # feature_normalized, mat_normalized = F.normalize(features).numpy(), \
     #                                      F.normalize(database).numpy()
@@ -143,8 +143,9 @@ def multi_matching(img, database, category, net, batch_size=20, concat=True, mea
     #
     # similarity = np.max(scores)
 
-    best_similarity = np.max(similarity, axis=0)  # (N, )
-    index = np.argmax(similarity, axis=0)  # (N, )
+    # best_similarity = np.max(similarity, axis=0)  # (N, )
+    # index = np.argmax(similarity, axis=0)  # (N, )
+    best_similarity, index = torch.max(similarity, dim=0)
     result_categories = category[index]
 
     return result_categories, best_similarity.round(5)

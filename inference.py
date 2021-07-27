@@ -77,8 +77,11 @@ def run():
                                              json_file=RETRIEVAL_JSON_PATH,
                                              img_size=IMAGE_RESOLUTION)
 
-    mat = retail_eval.getFeatureFromTorch([regressor, regressor_], test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    # mat = retail_eval.getFeatureFromTorch([regressor, regressor_], test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    mat = retail_eval.getFeatureFromTorch(regressor, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    mat_ = retail_eval.getFeatureFromTorch(regressor_, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
     database = mat['feature']
+    database_ = mat_['feature']
     category_base = mat['class']
 
     with open(TEST_JSON_PATH, 'r') as f:
@@ -121,11 +124,20 @@ def run():
             categories, scores = multi_matching(img=total_goods,
                                                 database=database,
                                                 category=category_base,
-                                                # net=regressor,
-                                                net=[regressor, regressor_],
+                                                net=regressor,
+                                                # net=[regressor, regressor_],
                                                 batch_size=REGRESS_BATCH_SIZE,
                                                 concat=CONCAT,
                                                 mean=MEAN)
+            categories_, scores_ = multi_matching(img=total_goods,
+                                                database=database,
+                                                category=category_base,
+                                                net=regressor_,
+                                                # net=[regressor, regressor_],
+                                                batch_size=REGRESS_BATCH_SIZE,
+                                                concat=CONCAT,
+                                                mean=MEAN)
+            categories = torch.where(scores > scores_, categories, categories_)
             detect_confs = det[:, 4]
             det_boxes = det[:, :4]
             boxes = xyxy2xywh(det_boxes)
