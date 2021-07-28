@@ -174,8 +174,6 @@ def test_inference(imgs, net, concat=True, mean=False):
         imgs = imgs[None, ...]
 
     imgs = imgs.cuda().float()
-    # imgs = (imgs - 127.5) / 128.
-    # imgs = imgs.permute(0, 3, 1, 2).contiguous()  # bchw
     features = get_features(imgs, net, concat=concat, mean=mean)
 
     return features
