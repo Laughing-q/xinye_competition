@@ -7,11 +7,10 @@ sys.path.insert(0, BASE_DIR)
 from model.detector import Yolov5
 from utils.general import xyxy2xywh
 from utils.regressor.distance_calculation_arcface import multi_matching
-from model.regressor.create_regressor import create_model, Regressor, Ensemble, \
-    load_regressor
+from model.regressor.create_regressor import create_model
 from utils.regressor import retail_eval
 from utils.plots import plot_one_box
-from utils.config import IMAGE_RESOLUTION, CONCAT, MEAN, NUM_WORKERS
+from utils.config import IMAGE_RESOLUTION, CONCAT, MEAN
 import torch
 import cv2
 import random
@@ -29,7 +28,7 @@ DETECT_THRES = 0.001
 IOU_THRES = 0.5
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 8
+REGRESS_BATCH_SIZE = 4
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
@@ -40,10 +39,12 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/150_311.ckpt')
 # REGRESS_WEIGHT_PATH_ = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
 REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
 REGRESS_WEIGHT_PATH_ = osp.join(BASE_DIR, 'model_files/epoch006_99.94_0.2488_224×224.ckpt')
+# REGRESS_WEIGHT_PATH__ = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
 TEST_IMAGES_PATH = osp.join(BASE_DIR, 'data/test/a_images')
@@ -63,26 +64,34 @@ def run():
                       cfg=DETECTOR_CFG_PATH,
                       device='0', img_hw=(640, 640))
     detector.show = False
-    print('load detector successfully!')
 
     # create model
-    regressor = load_regressor(weights=[REGRESS_WEIGHT_PATH],
-                               model_names=['efficientnet_b4'],
-                               pretrained=[False],
-                               cgd=[False],
-                               swin_type=['large'])
-    # regressor = regressor[0]
-    print('load regressor successfully!')
+    # regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION, cgd=False).cuda()
+    regressor = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION, 
+                             cgd=False, swin_type='large').cuda()
+    regressor.load_state_dict(torch.load(REGRESS_WEIGHT_PATH)['net_state_dict'])
+    regressor.eval()
+
+    regressor_ = create_model('efficientnet_b4', pretrained=False, input_size=IMAGE_RESOLUTION, 
+                              cgd=False, swin_type='large').cuda()
+    regressor_.load_state_dict(torch.load(REGRESS_WEIGHT_PATH_)['net_state_dict'])
+    regressor_.eval()
+
+    # regressor__ = create_model('swin_transformer', pretrained=False, input_size=IMAGE_RESOLUTION, 
+    #                            cgd=False, swin_type='small').cuda()
+    # regressor__.load_state_dict(torch.load(REGRESS_WEIGHT_PATH__)['net_state_dict'])
+    # regressor__.eval()
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH,
                                              json_file=RETRIEVAL_JSON_PATH,
                                              img_size=IMAGE_RESOLUTION)
 
-    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=REGRESS_BATCH_SIZE, shuffle=False, num_workers=NUM_WORKERS, drop_last=False)
-    mat = regressor.generateBase(test_loader=test_loader)
-
+    # mat = retail_eval.getFeatureFromTorch([regressor, regressor_], test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    mat = retail_eval.getFeatureFromTorch(regressor, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    mat_ = retail_eval.getFeatureFromTorch(regressor_, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
+    # mat__ = retail_eval.getFeatureFromTorch(regressor__, test_dataset, batch_size=REGRESS_BATCH_SIZE, concat=CONCAT)
     database = mat['feature']
-    # database_ = mat_['feature']
+    database_ = mat_['feature']
     # database__ = mat__['feature']
     category_base = mat['class']
 
@@ -123,12 +132,37 @@ def run():
                 goods = cv2.cvtColor(goods, cv2.COLOR_BGR2RGB)
                 total_goods.append(cv2.resize(goods, REGRESS_INPUT_SIZE))
 
-            features = regressor(total_goods, batch_size=REGRESS_BATCH_SIZE)
-            categories, scores = regressor.matching(database=database,
-                                                    category=category_base,
-                                                    features=features)
-            categories, scores = regressor.selectResutlt(categories=categories,
-                                                        scores=scores)
+            categories, scores = multi_matching(img=total_goods,
+                                                database=database,
+                                                category=category_base,
+                                                net=regressor,
+                                                # net=[regressor, regressor_],
+                                                batch_size=REGRESS_BATCH_SIZE,
+                                                concat=CONCAT,
+                                                mean=MEAN)
+            categories_, scores_ = multi_matching(img=total_goods,
+                                                database=database_,
+                                                category=category_base,
+                                                net=regressor_,
+                                                # net=[regressor, regressor_],
+                                                batch_size=REGRESS_BATCH_SIZE,
+                                                concat=CONCAT,
+                                                mean=MEAN)
+            # categories__, scores__ = multi_matching(img=total_goods,
+            #                                     database=database__,
+            #                                     category=category_base,
+            #                                     net=regressor__,
+            #                                     # net=[regressor, regressor_],
+            #                                     batch_size=REGRESS_BATCH_SIZE,
+            #                                     concat=CONCAT,
+            #                                     mean=MEAN)
+            # categories = torch.where(scores > scores_, categories, categories_)
+            categories = torch.stack([categories, categories_], dim=0) # 3, N
+            scores = torch.stack([scores, scores_], dim=0)
+            _, index = torch.max(scores, dim=0)
+            rows, cols = index, torch.tensor(range(len(index)))
+            categories = categories[rows, cols]
+            scores = scores[rows, cols]
 
             detect_confs = det[:, 4]
             det_boxes = det[:, :4]

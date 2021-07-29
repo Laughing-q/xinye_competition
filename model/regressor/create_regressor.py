@@ -340,10 +340,32 @@ class Ensemble(nn.ModuleList):
             final_categories = []
             final_scores = []
             for score, categiry in zip(scores.T, categories.T):
+                # 统计预测类别索引的个数, 返回的是每个类别索引位置对应类别个数
                 bincount = torch.bincount(categiry)
-                _, index = torch.max(bincount, dim=0)
-                best_score = score[categiry==index].max()
-                final_categories.append(index)
+                # 找到个数最大的 值和类别索引
+                max_count, index = torch.max(bincount, dim=0)
+                # torch.max是返回找到的第一个最大值，所以有可能存在多个最大值
+                # 找到个数最大的 所有索引
+                value_indexs = bincount == max_count
+                # 如果只有一个最大值，直接取这个预测类别
+                if value_indexs.sum() == 1:
+                    # score取所有预测为该类别里最高的相似度
+                    best_score = score[categiry==index].max()
+                    best_index = index
+                else:
+                    # 如果有多个最大值
+                    # 找到这些最大值的类别索引
+                    category_index = torch.nonzero(value_indexs).squeeze()
+                    best_score = 0
+                    best_index = 0
+                    # 对每个类别预测的score求均值，取均值最大的为最终预测
+                    for c in category_index:
+                        mean_score = score[categiry==c].mean()
+                        if mean_score > best_score:
+                            best_score = mean_score
+                            best_index = c
+                    # best_index = category_index[index]
+                final_categories.append(best_index)
                 final_scores.append(best_score)
 
         return final_categories, final_scores
