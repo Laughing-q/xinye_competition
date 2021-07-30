@@ -16,7 +16,7 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def create_model(name, pretrained, input_size, cgd=False, swin_type='large'):
+def create_model(name, pretrained, input_size, cgd=False, swin_type='large', class_num=0):
     flag = 'conv'
     if name == 'efficientnet_b4':
         model = timm.create_model('efficientnet_b4', 
@@ -35,7 +35,8 @@ def create_model(name, pretrained, input_size, cgd=False, swin_type='large'):
                         DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
     if cgd:
         model = CGDModel(model, gd_config='SG', feature_dim=FEATURE_DIMS, 
-                        num_classes=CLASS_NUM, flag=flag)
+                         num_classes=CLASS_NUM if class_num == 0 else class_num, 
+                         flag=flag)
     return model
 
 
@@ -47,10 +48,11 @@ def create_metric(name):
 
 
 class Regressor(nn.Module):
-    def __init__(self, model_name, pretrained=False, cgd=False, swin_type='large'):
+    def __init__(self, model_name, pretrained=False, cgd=False, 
+                 swin_type='large', class_num=0):
         super(Regressor, self).__init__()
         self.model = create_model(model_name, pretrained, input_size=IMAGE_RESOLUTION,
-                             cgd=cgd, swin_type=swin_type).cuda()
+                             cgd=cgd, swin_type=swin_type, class_num=class_num).cuda()
         self.concat = CONCAT
         self.mean = MEAN
         self.train = False
@@ -364,7 +366,9 @@ class Ensemble(nn.ModuleList):
                         if mean_score > best_score:
                             best_score = mean_score
                             best_index = c
-                    # best_index = category_index[index]
+                    # 由于目前是最多三个模型，所以写死，选择精度最高模型的预测
+                    # best_score = score[0]
+                    # best_index = categiry[0]
                 final_categories.append(best_index)
                 final_scores.append(best_score)
 
@@ -375,16 +379,22 @@ def load_regressor(weights,
                    model_names, 
                    pretrained,
                    cgd,
-                   swin_type):
+                   swin_type,
+                   class_num):
     models = Ensemble()
     weights = weights if isinstance(weights, list) else [weights]
     model_names = model_names if isinstance(model_names, list) else [model_names]
     pretrained = pretrained if isinstance(pretrained, list) else [pretrained]
     cgd = cgd if isinstance(cgd, list) else [cgd]
     swin_type = swin_type if isinstance(swin_type, list) else [swin_type]
+    class_num = class_num if isinstance(class_num, list) else [class_num]
 
-    for w, m, p, c, s in zip(weights, model_names, pretrained, cgd, swin_type):
-        regressor = Regressor(m, p, c, s)
+    assert len(weights) == len(model_names) == len(pretrained) == \
+        len(cgd) == len(swin_type) == len(class_num), \
+        'The length of Args should be the same.'
+
+    for w, m, p, c, s, cls in zip(weights, model_names, pretrained, cgd, swin_type, class_num):
+        regressor = Regressor(m, p, c, s, cls)
         regressor.load_weight(w)
         models.append(regressor)
     

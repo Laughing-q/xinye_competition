@@ -46,4 +46,4 @@ def plot_recognition_results(start=0, stop=0, labels=(), save_dir=''):
 
 
 if __name__ == "__main__":
-    plot_recognition_results(save_dir='/d/projects/xinye_competition/model_files')
+    plot_recognition_results(save_dir='/d/projects/xinye_competition/model_files/swin_large')

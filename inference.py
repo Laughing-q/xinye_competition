@@ -29,7 +29,7 @@ DETECT_THRES = 0.001
 IOU_THRES = 0.5
 REGRESS_INPUT_SIZE = (IMAGE_RESOLUTION, IMAGE_RESOLUTION)  # (w, h)
 DETECT_MODE = 'x'
-REGRESS_BATCH_SIZE = 4
+REGRESS_BATCH_SIZE = 16
 COLORS = [[random.randint(0, 255) for _ in range(3)]
           for _ in range(116)]
 
@@ -40,10 +40,10 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/069_111_1024.ckpt')
 REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
-REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/efficientb4_epoch031_99.9133_0.2413.ckpt')
-# REGRESS_WEIGHT_PATH_ = osp.join(BASE_DIR, 'model_files/epoch006_99.94_0.2488_224×224.ckpt')
+# REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
+REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_epoch133_98.75_311.ckpt')
 REGRESS_WEIGHT_PATH_2 = osp.join(BASE_DIR, 'model_files/swin_small_cgd_epoch040._9.9633.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -70,8 +70,9 @@ def run():
     regressor = load_regressor(weights=[REGRESS_WEIGHT_PATH, REGRESS_WEIGHT_PATH_1, REGRESS_WEIGHT_PATH_2],
                                model_names=['swin_transformer', 'swin_transformer', 'swin_transformer'],
                                pretrained=[False, False, False],
-                               cgd=[True, False, True],
-                               swin_type=['large', 'large', 'small'])
+                               cgd=[True, True, True],
+                               swin_type=['large', 'large', 'small'],
+                               class_num=[116, 311, 116])
     # regressor = regressor[0]
     print('load regressor successfully!')
 

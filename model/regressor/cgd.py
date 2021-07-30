@@ -47,7 +47,7 @@ class L2Norm(nn.Module):
 
 
 class CGDModel(nn.Module):
-    def __init__(self, backbone, gd_config, feature_dim, num_classes, flag='swin'):
+    def __init__(self, backbone, gd_config, feature_dim, num_classes=111, flag='swin'):
         super().__init__()
 
         # Backbone Network
