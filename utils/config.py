@@ -5,9 +5,9 @@ BASE_DIR = osp.abspath(osp.join(osp.dirname(__file__), osp.pardir))
 # BASE_DIR = osp.abspath('.')
 
 NUM_THREADS = min(16, os.cpu_count())  # number of multiprocessing threads
-NUM_WORKERS = min(16, os.cpu_count())  # number of torch dataloader cpu workers
+NUM_WORKERS = min(0, os.cpu_count())  # number of torch dataloader cpu workers
 
-FEATURE_DIMS = 512
+FEATURE_DIMS = 512 # 512
 CLASS_NUM = 111 # 311
 
 IMAGE_RESOLUTION = 224  # the inference input size, same as training input_size mostly

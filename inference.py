@@ -39,11 +39,14 @@ COLORS = [[random.randint(0, 255) for _ in range(3)]
 # DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_single.yaml')
 DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC.pth')
 DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
+# DETECTOR_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/yolov5x_RPC_all.pth')
+# DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC_all.yaml')
 
-# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/069_111_1024.ckpt')
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cgd_epoch126_0.9993_1024.ckpt')
+# REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swinlarge_arcfade_epoch126_0.9966_1024.ckpt')
 # REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
-REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_epoch133_98.75_311.ckpt')
+REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_cgd_epoch126_0.9993_1024.ckpt')
 REGRESS_WEIGHT_PATH_2 = osp.join(BASE_DIR, 'model_files/swin_small_cgd_epoch040._9.9633.ckpt')
 RESULT_SAVE_PATH = osp.join(BASE_DIR, 'submit/output.json')
 
@@ -72,8 +75,17 @@ def run():
                                pretrained=[False, False, False],
                                cgd=[True, True, True],
                                swin_type=['large', 'large', 'small'],
-                               class_num=[116, 311, 116])
-    # regressor = regressor[0]
+                               class_num=[111, 111, 116],
+                               feature_dim=[1024, 1024, 512],
+                               concat=[True, True, True])
+    # regressor = load_regressor(weights=[REGRESS_WEIGHT_PATH],
+    #                            model_names=['swin_transformer'],
+    #                            pretrained=[False],
+    #                            cgd=[True],
+    #                            swin_type=['large'],
+    #                            class_num=[107],
+    #                            feature_dim=[1024],
+    #                            concat=[True])
     print('load regressor successfully!')
 
     test_dataset = retail_eval.RetailDataset(pic_root=RETRIEVAL_IMAGE_PATH,
@@ -158,6 +170,8 @@ torchvision+0.5: 52579, 50805
 torch_nms+Min+0.5: 47892
 torch_nms+Min+0.85: 51157
 torchvision+0.5+Min+0.85: 49424
+
+yolov5x_RPC_all: 52440
 """
 
 if __name__ == "__main__":

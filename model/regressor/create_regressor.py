@@ -16,25 +16,29 @@ import numpy as np
 import torch.nn.functional as F
 
 
-def create_model(name, pretrained, input_size, cgd=False, swin_type='large', class_num=0):
+def create_model(name, pretrained, input_size, cgd=False, 
+                 swin_type='large', class_num=0,
+                 feature_dim=None):
+    feature_dim = FEATURE_DIMS if feature_dim is None else feature_dim
     flag = 'conv'
     if name == 'efficientnet_b4':
         model = timm.create_model('efficientnet_b4', 
-                                  pretrained=pretrained, num_classes=FEATURE_DIMS)
+                                  pretrained=pretrained, 
+                                  num_classes=feature_dim)
     # for test training code
     elif name == 'mobilenetv3_large_100':
         model = timm.create_model('mobilenetv3_large_100', 
-                                  pretrained=pretrained, num_classes=FEATURE_DIMS)
+                                  pretrained=pretrained, num_classes=feature_dim)
     elif name == 'swin_transformer':
-        model = swin_transformer(input_size=input_size, num_classes=FEATURE_DIMS, type=swin_type)
+        model = swin_transformer(input_size=input_size, num_classes=feature_dim, type=swin_type)
         flag = 'swin'
         if pretrained:
             model.load_state_dict(torch.load(SWIN_PRETRAIN, map_location='cpu')['model'], strict=False)
     elif name == 'CoATNet':
         model = CoAtNet(input_size, REPEAT_NUM['CoAtNet-0'], 
-                        DIMS['CoAtNet-0'], class_num=FEATURE_DIMS)
+                        DIMS['CoAtNet-0'], class_num=feature_dim)
     if cgd:
-        model = CGDModel(model, gd_config='SG', feature_dim=FEATURE_DIMS, 
+        model = CGDModel(model, gd_config='SG', feature_dim=feature_dim, 
                          num_classes=CLASS_NUM if class_num == 0 else class_num, 
                          flag=flag)
     return model
@@ -49,32 +53,36 @@ def create_metric(name):
 
 class Regressor(nn.Module):
     def __init__(self, model_name, pretrained=False, cgd=False, 
-                 swin_type='large', class_num=0):
+                 swin_type='large', class_num=0, feature_dim=None,
+                 concat=None, mean=None):
         super(Regressor, self).__init__()
         self.model = create_model(model_name, pretrained, input_size=IMAGE_RESOLUTION,
-                             cgd=cgd, swin_type=swin_type, class_num=class_num).cuda()
-        self.concat = CONCAT
-        self.mean = MEAN
+                                  cgd=cgd, swin_type=swin_type, class_num=class_num,
+                                  feature_dim=feature_dim).cuda()
+        self.concat = CONCAT if concat is None else concat
+        self.mean = MEAN if mean is None else mean
+        self.swin_type = swin_type
         self.train = False
         if self.concat and self.mean:
             raise ValueError(f"`concat` and `mean` are mutually exclusive.")
 
-    def train(self):
-        self.train = True
-        self.concat = False
-        self.mean = False
-        self.model.train()
-
-    def eval(self):
-        self.train = False
-        self.concat = CONCAT
-        self.mean = MEAN
-        self.model.eval()
+    # def train(self):
+    #     self.train = True
+    #     self.concat = False
+    #     self.mean = False
+    #     self.model.train()
+    #
+    # def eval(self):
+    #     self.train = False
+    #     self.concat = CONCAT if self.concat is None else self.concat
+    #     self.mean = MEAN if self.mean is None else self.mean
+    #     self.model.eval()
 
     def load_weight(self, weight_path):
         """load weight"""
         self.model.load_state_dict(torch.load(weight_path)['net_state_dict'])
-        self.eval()
+        # self.eval()
+        self.model.eval()
 
     def toTensor(self, imgs, device='cuda'):
         """preprocess, normalization and permutation"""
@@ -179,6 +187,13 @@ class Regressor(nn.Module):
             return the output features, (N, features_dim)
         """
         if batch_size is not None:
+            # for now, 对于现在都是基于large模型设置batch-size,单独写一个针对small的调整
+            if self.swin_type == 'small':
+                batch_size *= 1.8
+                batch_size = int(batch_size)
+            # for now,对于一些模型可能不需要concat或者是mean，可以加大batch_size
+            if not (self.concat or self.mean): 
+                batch_size *= 2
             features = []
             for sub_imgs in torch.split(imgs, batch_size, dim=0):
                 sub_features = self.get_features(sub_imgs)
@@ -274,7 +289,8 @@ class Ensemble(nn.ModuleList):
         features = []
         for module in self:
             features.append(module.batched_inference(imgs, batch_size=batch_size))
-        total_features = torch.stack(features, dim=0)  # [num_models, num_images, features_dim]
+        # total_features = torch.stack(features, dim=0)  # [num_models, num_images, features_dim]
+        total_features = features  # List[num_models x (num_images, features_dim)]
         if fuse_feature:
             return torch.mean(total_features, dim=0) # [num_images, features_dim]
         else:
@@ -296,7 +312,10 @@ class Ensemble(nn.ModuleList):
             Features.append(features)
             ItermClass.append(targets)
 
-        Features = torch.cat(Features, dim=1).cpu()  # [num_models, num_imgs, features_dim]
+        # Features = torch.cat(Features, dim=1).cpu()  # [num_models, num_imgs, features_dim]
+        # List[num_batch x List[num_models x (num_images, features_dim)]]
+        # List[num_models x (num_images x num_batch, features_dim)]
+        Features = [torch.cat(x, 0) for x in zip(*Features)]  # to numpy
         ItermClass = torch.cat(ItermClass, dim=0)
         result = {'feature': Features, 'class': ItermClass}
         return result
@@ -380,7 +399,9 @@ def load_regressor(weights,
                    pretrained,
                    cgd,
                    swin_type,
-                   class_num):
+                   class_num,
+                   feature_dim,
+                   concat):
     models = Ensemble()
     weights = weights if isinstance(weights, list) else [weights]
     model_names = model_names if isinstance(model_names, list) else [model_names]
@@ -388,13 +409,16 @@ def load_regressor(weights,
     cgd = cgd if isinstance(cgd, list) else [cgd]
     swin_type = swin_type if isinstance(swin_type, list) else [swin_type]
     class_num = class_num if isinstance(class_num, list) else [class_num]
+    feature_dim = feature_dim if isinstance(feature_dim, list) else [feature_dim]
+    concat = concat if isinstance(concat, list) else [concat]
 
     assert len(weights) == len(model_names) == len(pretrained) == \
-        len(cgd) == len(swin_type) == len(class_num), \
+        len(cgd) == len(swin_type) == len(class_num) == len(feature_dim) == len(concat), \
         'The length of Args should be the same.'
 
-    for w, m, p, c, s, cls in zip(weights, model_names, pretrained, cgd, swin_type, class_num):
-        regressor = Regressor(m, p, c, s, cls)
+    for w, m, p, c, s, cls, f, con in zip(weights, model_names, pretrained, \
+                                  cgd, swin_type, class_num, feature_dim, concat):
+        regressor = Regressor(m, p, c, s, cls, f, con)
         regressor.load_weight(w)
         models.append(regressor)
     
