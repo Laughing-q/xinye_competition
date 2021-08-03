@@ -37,6 +37,7 @@ parser.add_argument('--save_interval', type=int, default=1, help='The interval o
 parser.add_argument('--test_interval', type=int, default=1, help='The interval of testing model')
 parser.add_argument('--use_cgd', action='store_true', default=False, help='Whether to use CGD')
 parser.add_argument('--backbone', default='efficientnet_b4', help='Backbone')
+parser.add_argument('--swin_type', default='large', help='swin type')
 parser.add_argument('--loss_head', default='Circleloss', help='Loss_head')
 parser.add_argument('--pretrain', default=False, help='start from pretrain model')
 parser.add_argument('--ema', action='store_true', default=True, help='Exponential Moving Average')
@@ -86,7 +87,8 @@ _print(opt)
 
 img_size = opt.input_size
 
-net = create_model(name=opt.backbone, pretrained=opt.pretrain, input_size=img_size, cgd=opt.use_cgd).cuda()
+net = create_model(name=opt.backbone, pretrained=opt.pretrain, 
+                   input_size=img_size, cgd=opt.use_cgd, swin_type=opt.swin_type).cuda()
 if opt.ema:
     ema = ModelEMA(net)
 

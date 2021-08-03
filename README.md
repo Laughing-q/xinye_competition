@@ -67,7 +67,9 @@ python tools/prepare_data.py --regressor-data --detector-data --generate-pair
 
 ## Train regressor
 ```shell
-python tools/train_regressor.py
+python tools/train_regressor.py --epochs 150 --input_size 224 --batch_size 200 --backbone swin_transformer --swin_type small --loss_head Circleloss --use_cgd
+python tools/train_regressor.py --epochs 150 --input_size 224 --batch_size 100 --backbone swin_transformer --swin_type large --loss_head Circleloss --use_cgd
+python tools/train_regressor.py --epochs 150 --input_size 224 --batch_size 100 --backbone swin_transformer --swin_type large --loss_head Circleloss --use_cgd
 ```
 
 ## Train detector

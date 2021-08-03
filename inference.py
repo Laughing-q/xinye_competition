@@ -44,7 +44,7 @@ DETECTOR_CFG_PATH = osp.join(BASE_DIR, 'model/yolov5x_RPC.yaml')
 
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cgd_epoch126_0.9993_1024.ckpt')
 # REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/siwn_large_cgd_epoch049_99.99.ckpt')
-REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swinlarge_arcfade_epoch126_0.9966_1024.ckpt')
+REGRESS_WEIGHT_PATH = osp.join(BASE_DIR, 'model_files/swin_large_cgd_epoch126_0.9993_1024.ckpt')
 # REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_028epoch_99.97_0.3506.ckpt')
 REGRESS_WEIGHT_PATH_1 = osp.join(BASE_DIR, 'model_files/swin_large_cgd_epoch126_0.9993_1024.ckpt')
 REGRESS_WEIGHT_PATH_2 = osp.join(BASE_DIR, 'model_files/swin_small_cgd_epoch040._9.9633.ckpt')
@@ -83,7 +83,7 @@ def run():
     #                            pretrained=[False],
     #                            cgd=[True],
     #                            swin_type=['large'],
-    #                            class_num=[107],
+    #                            class_num=[111],
     #                            feature_dim=[1024],
     #                            concat=[True])
     print('load regressor successfully!')
@@ -142,7 +142,7 @@ def run():
                                                     category=category_base,
                                                     features=features)
             categories, scores = regressor.selectResutlt(categories=categories,
-                                                        scores=scores)
+                                                         scores=scores)
 
             detect_confs = det[:, 4]
             det_boxes = det[:, :4]
